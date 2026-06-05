@@ -58,13 +58,17 @@ export function canApp(actor: { appRole: AppRole }, action: AppAction): boolean 
 
 const POSTING_ROLES: readonly ChannelRole[] = ["owner", "admin", "user"];
 const MANAGEMENT_ROLES: readonly ChannelRole[] = ["owner", "admin"];
-const ALL_ROLES: readonly ChannelRole[] = ["owner", "admin", "user", "viewer"];
 
 type ChannelRule = { roles: readonly ChannelRole[]; requiresActive?: boolean };
 
-/** Per-channel rules: required roles, and whether the channel must be active. */
-const CHANNEL_ACTION_RULES: Record<Exclude<ChannelAction, "channel:delete">, ChannelRule> = {
-    "channel:view": { roles: ALL_ROLES },
+/**
+ * Per-channel rules: required roles, and whether the channel must be active.
+ * `channel:view` and `channel:delete` are handled separately in canInChannel.
+ */
+const CHANNEL_ACTION_RULES: Record<
+    Exclude<ChannelAction, "channel:delete" | "channel:view">,
+    ChannelRule
+> = {
     "channel:post": { roles: POSTING_ROLES, requiresActive: true },
     "thread:create": { roles: POSTING_ROLES, requiresActive: true },
     "message:edit_own": { roles: POSTING_ROLES, requiresActive: true },
@@ -97,6 +101,13 @@ export function canInChannel(
     action: ChannelAction
 ): boolean {
     const role = effectiveChannelRole(actor, membership);
+
+    if (action === "channel:view") {
+        // Public channels are readable by any approved user; private channels
+        // require a membership (or app staff, who get an effective role).
+        return !channel.isPrivate || role !== null;
+    }
+
     if (role === null) return false; // no access (e.g. private, non-member)
 
     if (action === "channel:delete") {

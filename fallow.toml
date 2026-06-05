@@ -1,12 +1,13 @@
 # Fallow audit configuration.
 #
 # The CRAP score blends cyclomatic complexity with test coverage. With no
-# coverage data it degenerates to a pure complexity penalty (cc^2 + cc), which
-# flags any function with cyclomatic complexity >= 5 — including simple routing
-# and guard-clause code. Until the project has test coverage, we gate on the
-# meaningful complexity limits (cyclomatic / cognitive, kept strict) and relax
-# the CRAP ceiling so it doesn't double-penalize uncovered-but-simple code.
+# coverage data it degenerates to a pure complexity penalty (cc^2 + cc), and on
+# JSX-heavy components it over-counts (every `&&`/ternary in markup). Until the
+# project has test coverage we gate on the meaningful, industry-standard limits
+# — cyclomatic <= 20 and cognitive <= 15 — and set the CRAP ceiling to match the
+# cyclomatic limit under zero coverage (20^2 + 20 = 420) so CRAP doesn't bind
+# tighter than cyclomatic. Revisit (lower maxCrap) once coverage is wired up.
 [health]
-maxCrap = 120
+maxCrap = 420
 maxCyclomatic = 20
 maxCognitive = 15
