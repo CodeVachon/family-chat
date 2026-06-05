@@ -27,5 +27,8 @@
   ],
   "dependencies": {
     "fallow": "^2.89.0"
+  },
+  "overrides": {
+    "kysely": "0.28.17"
   }
 }

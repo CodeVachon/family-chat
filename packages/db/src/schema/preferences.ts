@@ -1,0 +1,25 @@
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+import { user } from "./auth";
+
+/**
+ * Per-user preferences (1:1 with `user`). Kept separate from the Better-Auth
+ * `user` table so the auth adapter's schema stays clean.
+ *
+ * `colorHue` (0–360) is the user's identity color; lightness/chroma are clamped
+ * per theme in CSS so it stays readable in both light and dark.
+ */
+export const userPreferences = pgTable("user_preferences", {
+    userId: text("user_id")
+        .primaryKey()
+        .references(() => user.id, { onDelete: "cascade" }),
+    displayName: text("display_name"),
+    dateTimeFormat: text("date_time_format").notNull().default("relative"),
+    themePreference: text("theme_preference").notNull().default("system"),
+    colorHue: integer("color_hue").notNull().default(220),
+    avatarUrl: text("avatar_url"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow()
+});
+
+export type UserPreferences = typeof userPreferences.$inferSelect;

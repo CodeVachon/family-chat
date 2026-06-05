@@ -40,9 +40,16 @@
     --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
     --sidebar-border: oklch(0.925 0.005 214.3);
     --sidebar-ring: oklch(0.723 0.014 214.4);
+    /* User identity color: each user picks a hue; lightness/chroma are clamped
+       per theme so the resulting oklch() stays readable. Used as
+       oklch(var(--user-l) var(--user-c) <hue>) for names + avatar rings. */
+    --user-l: 0.5;
+    --user-c: 0.13;
 }
 
 .dark {
+    --user-l: 0.78;
+    --user-c: 0.11;
     --background: oklch(0.148 0.004 228.8);
     --foreground: oklch(0.987 0.002 197.1);
     --card: oklch(0.218 0.008 223.9);
