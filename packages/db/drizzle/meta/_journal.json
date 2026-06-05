@@ -15,6 +15,27 @@
       "when": 1780698308958,
       "tag": "0001_daffy_meggan",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780702321507,
+      "tag": "0002_little_maria_hill",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780702330779,
+      "tag": "0003_realtime_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780703672768,
+      "tag": "0004_channels_changed_trigger",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, isNotNull, or } from "drizzle-orm";
+import { and, asc, eq, isNotNull, or, sql } from "drizzle-orm";
 
 import { db } from "@workspace/db/client";
 import { channelMembers, channels, messages } from "@workspace/db/schema";
@@ -20,8 +20,18 @@ const authorWith = {
  * are a member of. Each row carries the user's own role (null if not a member).
  */
 export async function listVisibleChannels(userId: string) {
+    // Unread = messages by others since the member's read pointer. Only members
+    // get unread tracking (0 for public channels they haven't joined).
+    const unreadCount = sql<number>`CASE WHEN ${channelMembers.userId} IS NULL THEN 0 ELSE (
+        SELECT COUNT(*)::int FROM ${messages} m
+        WHERE m.channel_id = ${channels.id}
+          AND m.deleted_at IS NULL
+          AND m.author_user_id <> ${userId}
+          AND (${channelMembers.lastReadAt} IS NULL OR m.created_at > ${channelMembers.lastReadAt})
+    ) END`;
+
     const rows = await db
-        .select({ channel: channels, myRole: channelMembers.role })
+        .select({ channel: channels, myRole: channelMembers.role, unreadCount })
         .from(channels)
         .leftJoin(
             channelMembers,
@@ -30,7 +40,11 @@ export async function listVisibleChannels(userId: string) {
         .where(or(eq(channels.isPrivate, false), isNotNull(channelMembers.userId)))
         .orderBy(asc(channels.name));
 
-    return rows.map((r) => ({ ...r.channel, myRole: (r.myRole as ChannelRole | null) ?? null }));
+    return rows.map((r) => ({
+        ...r.channel,
+        myRole: (r.myRole as ChannelRole | null) ?? null,
+        unreadCount: Number(r.unreadCount ?? 0)
+    }));
 }
 
 export type VisibleChannel = Awaited<ReturnType<typeof listVisibleChannels>>[number];

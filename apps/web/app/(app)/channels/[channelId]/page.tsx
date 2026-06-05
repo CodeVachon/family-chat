@@ -1,7 +1,9 @@
 import { ChannelHeader } from "@/components/channels/channel-header";
 import { Composer } from "@/components/channels/composer";
 import { JoinButton } from "@/components/channels/join-button";
+import { MarkReadOnView } from "@/components/channels/mark-read-on-view";
 import { MessageList } from "@/components/channels/message-list";
+import { TypingIndicator } from "@/components/channels/typing-indicator";
 import { authorizeChannel } from "@/lib/dal";
 import { canInChannel } from "@/lib/permissions";
 import {
@@ -41,8 +43,13 @@ export default async function ChannelPage({
     const memberIds = new Set(memberRows.map((m) => m.userId));
     const addableUsers = approvedUsers.filter((u) => !memberIds.has(u.id));
 
+    const latestMessageId = messages.length > 0 ? messages[messages.length - 1]!.id : null;
+
     return (
         <div className="flex h-full min-h-0 flex-col">
+            {membership && (
+                <MarkReadOnView channelId={channel.id} latestMessageId={latestMessageId} />
+            )}
             <ChannelHeader
                 channel={channel}
                 canManage={canManage}
@@ -54,6 +61,8 @@ export default async function ChannelPage({
             <ScrollArea className="min-h-0 flex-1">
                 <MessageList messages={messages} />
             </ScrollArea>
+
+            <TypingIndicator channelId={channel.id} />
 
             {canPost ? (
                 <Composer channelId={channel.id} channelName={channel.name} />

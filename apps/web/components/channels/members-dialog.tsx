@@ -7,6 +7,7 @@ import {
     removeChannelMember,
     setChannelMemberRole
 } from "@/lib/actions/channel-members";
+import { useRealtime } from "@/components/realtime/realtime-provider";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -44,6 +45,7 @@ export function MembersDialog({
     addableUsers: { id: string; name: string }[];
 }) {
     const [open, setOpen] = useState(false);
+    const { onlineUserIds } = useRealtime();
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -89,14 +91,23 @@ export function MembersDialog({
                     {members.map((m) => {
                         const isOwner = m.role === "owner";
                         const editable = canManage && !isOwner;
+                        const online = onlineUserIds.has(m.userId);
                         return (
                             <div key={m.userId} className="flex items-center gap-2 rounded-lg p-1.5">
-                                <UserAvatar
-                                    name={m.name}
-                                    colorHue={m.colorHue}
-                                    avatarUrl={m.avatarUrl}
-                                    className="size-7"
-                                />
+                                <div className="relative">
+                                    <UserAvatar
+                                        name={m.name}
+                                        colorHue={m.colorHue}
+                                        avatarUrl={m.avatarUrl}
+                                        className="size-7"
+                                    />
+                                    {online && (
+                                        <span
+                                            className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-green-500 ring-2 ring-popover"
+                                            title="Online"
+                                        />
+                                    )}
+                                </div>
                                 <UserName name={m.name} colorHue={m.colorHue} className="flex-1 truncate text-sm" />
                                 {editable ? (
                                     <form action={setChannelMemberRole} className="flex items-center gap-1">

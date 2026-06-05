@@ -5,6 +5,7 @@ import { userPreferences } from "@workspace/db/schema";
 
 import { AppShell } from "@/components/app/app-shell";
 import type { SidebarChannel } from "@/components/channels/channel-list";
+import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 import { requireApprovedUser } from "@/lib/dal";
 import { isAppStaff } from "@/lib/permissions";
 import { listVisibleChannels } from "@/lib/queries/channels";
@@ -27,21 +28,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         icon: c.icon,
         isPrivate: c.isPrivate,
         isArchived: c.isArchived,
-        myRole: c.myRole
+        myRole: c.myRole,
+        unreadCount: c.unreadCount
     }));
 
     return (
-        <AppShell
-            user={{
-                name: prefs?.displayName ?? user.name,
-                email: user.email,
-                appRole: user.appRole,
-                colorHue: prefs?.colorHue ?? 220
-            }}
-            channels={sidebarChannels}
-            canAccessAdmin={isAppStaff(user)}
-        >
-            {children}
-        </AppShell>
+        <RealtimeProvider userId={user.id}>
+            <AppShell
+                user={{
+                    name: prefs?.displayName ?? user.name,
+                    email: user.email,
+                    appRole: user.appRole,
+                    colorHue: prefs?.colorHue ?? 220
+                }}
+                channels={sidebarChannels}
+                canAccessAdmin={isAppStaff(user)}
+            >
+                {children}
+            </AppShell>
+        </RealtimeProvider>
     );
 }

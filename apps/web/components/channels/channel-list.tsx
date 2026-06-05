@@ -17,6 +17,7 @@ export type SidebarChannel = {
     isPrivate: boolean;
     isArchived: boolean;
     myRole: ChannelRole | null;
+    unreadCount: number;
 };
 
 function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boolean }) {
@@ -33,8 +34,15 @@ function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boo
             )}
         >
             <ChannelIcon icon={channel.icon} color={channel.color} className="size-4 shrink-0" />
-            <span className="truncate">{channel.name}</span>
-            {channel.isPrivate && <Lock className="ml-auto size-3 shrink-0 opacity-70" />}
+            <span className={cn("truncate", channel.unreadCount > 0 && !active && "font-semibold text-foreground")}>
+                {channel.name}
+            </span>
+            {channel.isPrivate && <Lock className="size-3 shrink-0 opacity-70" />}
+            {channel.unreadCount > 0 && (
+                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+                    {channel.unreadCount > 99 ? "99+" : channel.unreadCount}
+                </span>
+            )}
         </Link>
     );
 }

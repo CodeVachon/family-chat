@@ -33,6 +33,10 @@ export const channelMembers = pgTable(
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
         role: channelRole("role").notNull().default("user"),
+        // Read pointer for unread counts. No FK (messages is defined later and
+        // we don't want a message delete to disturb the pointer).
+        lastReadMessageId: uuid("last_read_message_id"),
+        lastReadAt: timestamp("last_read_at"),
         joinedAt: timestamp("joined_at").notNull().defaultNow(),
         createdAt: timestamp("created_at").notNull().defaultNow(),
         updatedAt: timestamp("updated_at").notNull().defaultNow()

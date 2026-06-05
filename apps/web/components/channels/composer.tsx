@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useRealtime } from "@/components/realtime/realtime-provider";
 import { postMessage } from "@/lib/actions/messages";
 import { Button } from "@workspace/ui/components/button";
 import { Textarea } from "@workspace/ui/components/textarea";
 
 export function Composer({ channelId, channelName }: { channelId: string; channelName: string }) {
     const router = useRouter();
+    const { sendTyping } = useRealtime();
     const [body, setBody] = useState("");
     const [pending, setPending] = useState(false);
 
@@ -44,7 +46,10 @@ export function Composer({ channelId, channelName }: { channelId: string; channe
             <div className="flex items-end gap-2">
                 <Textarea
                     value={body}
-                    onChange={(e) => setBody(e.target.value)}
+                    onChange={(e) => {
+                        setBody(e.target.value);
+                        if (e.target.value.trim().length > 0) sendTyping(channelId);
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder={`Message #${channelName}`}
                     rows={1}
