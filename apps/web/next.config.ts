@@ -9,7 +9,14 @@ const nextConfig: NextConfig = {
     transpilePackages: ["@workspace/ui", "@workspace/db"],
     // Keep server-only libs out of the bundler. Better-Auth ships optional
     // adapters (kysely) we don't use; bundling them trips static export checks.
-    serverExternalPackages: ["better-auth", "@better-auth/kysely-adapter", "kysely", "postgres"],
+    serverExternalPackages: [
+        "better-auth",
+        "@better-auth/kysely-adapter",
+        "kysely",
+        "postgres",
+        "cloudinary",
+        "open-graph-scraper"
+    ],
     experimental: {
         // Enables forbidden()/unauthorized() + forbidden.tsx/unauthorized.tsx
         authInterrupts: true

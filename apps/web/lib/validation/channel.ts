@@ -47,9 +47,29 @@ export const channelFormSchema = z.object({
     isPrivate: z.boolean().default(false)
 });
 
-export const messageFormSchema = z.object({
-    channelId: z.string().uuid(),
-    body: z.string().trim().min(1, "Message cannot be empty").max(4000)
+export const attachmentInputSchema = z.object({
+    kind: z.enum(["image", "pdf", "file"]),
+    publicId: z.string().min(1),
+    resourceType: z.string().min(1),
+    secureUrl: z.string().url(),
+    format: z.string().nullable(),
+    bytes: z.number().int().nullable(),
+    width: z.number().int().nullable(),
+    height: z.number().int().nullable(),
+    originalFilename: z.string().nullable()
 });
+
+export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
+
+export const postMessageSchema = z
+    .object({
+        channelId: z.string().uuid(),
+        body: z.string().max(4000),
+        attachments: z.array(attachmentInputSchema).max(10).default([])
+    })
+    .refine((d) => d.body.trim().length > 0 || d.attachments.length > 0, {
+        message: "Message cannot be empty",
+        path: ["body"]
+    });
 
 export const channelMemberRoleSchema = z.enum(["admin", "user", "viewer"]);

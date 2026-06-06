@@ -1,9 +1,10 @@
 import "server-only";
 
-import { and, asc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 import { db } from "@workspace/db/client";
-import { channelMembers, channels, messages } from "@workspace/db/schema";
+import { channelMembers, channels, linkPreviews, messages } from "@workspace/db/schema";
+import { extractUrls } from "@/lib/messaging/links";
 import type { ChannelRole } from "@/lib/permissions";
 
 const authorWith = {
@@ -55,12 +56,31 @@ export async function getChannel(channelId: string) {
 
 /** Messages for a channel in chronological order (newest at the bottom). */
 export async function listChannelMessages(channelId: string, limit = 200) {
-    return db.query.messages.findMany({
+    const rows = await db.query.messages.findMany({
         where: eq(messages.channelId, channelId),
         orderBy: asc(messages.createdAt),
         limit,
-        with: { author: authorWith }
+        with: { author: authorWith, attachments: true }
     });
+
+    // Attach cached OK link previews, matched by URLs in each (non-deleted) body.
+    const urls = [...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(r.body))))];
+    const previewByUrl = new Map<string, (typeof linkPreviews.$inferSelect)>();
+    if (urls.length > 0) {
+        const previews = await db.query.linkPreviews.findMany({
+            where: and(inArray(linkPreviews.url, urls), eq(linkPreviews.status, "ok"))
+        });
+        for (const p of previews) previewByUrl.set(p.url, p);
+    }
+
+    return rows.map((r) => ({
+        ...r,
+        linkPreviews: r.deletedAt
+            ? []
+            : extractUrls(r.body)
+                  .map((u) => previewByUrl.get(u))
+                  .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    }));
 }
 
 export type ChannelMessage = Awaited<ReturnType<typeof listChannelMessages>>[number];

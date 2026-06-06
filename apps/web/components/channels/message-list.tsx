@@ -1,3 +1,5 @@
+import { LinkCard } from "@/components/channels/link-card";
+import { MessageAttachments } from "@/components/channels/message-attachments";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { formatMessageTime } from "@/lib/format";
 import type { ChannelMessage } from "@/lib/queries/channels";
@@ -29,7 +31,15 @@ function MessageItem({ message }: { message: ChannelMessage }) {
                 {deleted ? (
                     <p className="text-sm text-muted-foreground italic">This message was deleted.</p>
                 ) : (
-                    <p className="text-sm break-words whitespace-pre-wrap">{message.body}</p>
+                    <>
+                        {message.body && (
+                            <p className="text-sm break-words whitespace-pre-wrap">{message.body}</p>
+                        )}
+                        <MessageAttachments attachments={message.attachments} />
+                        {message.linkPreviews.map((preview) => (
+                            <LinkCard key={preview.id} preview={preview} />
+                        ))}
+                    </>
                 )}
             </div>
         </div>
