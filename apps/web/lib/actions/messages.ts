@@ -1,17 +1,43 @@
 "use server";
 
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@workspace/db/client";
-import { attachments, messages } from "@workspace/db/schema";
+import { attachments, channelMembers, mentions, messages } from "@workspace/db/schema";
 
 import { authorizeChannel } from "@/lib/dal";
 import { ensureMessageLinkPreviews } from "@/lib/messaging/link-preview";
-import { postMessageSchema } from "@/lib/validation/channel";
+import { canInChannel } from "@/lib/permissions";
+import { editMessageSchema, postMessageSchema } from "@/lib/validation/channel";
+
+/** Filter the given user ids to those that are members of the channel. */
+async function memberIdsIn(channelId: string, userIds: string[]): Promise<string[]> {
+    const unique = [...new Set(userIds)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows = await db
+        .select({ userId: channelMembers.userId })
+        .from(channelMembers)
+        .where(
+            and(eq(channelMembers.channelId, channelId), inArray(channelMembers.userId, unique))
+        );
+    return rows.map((r) => r.userId);
+}
 
 export async function postMessage(input: unknown) {
     const data = postMessageSchema.parse(input);
     const { user } = await authorizeChannel(data.channelId, "channel:post");
+
+    if (data.threadRootId) {
+        const root = await db.query.messages.findFirst({
+            where: eq(messages.id, data.threadRootId),
+            columns: { channelId: true, threadRootId: true }
+        });
+        if (!root || root.channelId !== data.channelId) throw new Error("Invalid thread");
+        if (root.threadRootId) throw new Error("Cannot reply to a reply");
+    }
+
+    const mentionIds = await memberIdsIn(data.channelId, data.mentionUserIds);
 
     const messageId = await db.transaction(async (tx) => {
         const [message] = await tx
@@ -19,6 +45,7 @@ export async function postMessage(input: unknown) {
             .values({
                 channelId: data.channelId,
                 authorUserId: user.id,
+                threadRootId: data.threadRootId ?? null,
                 body: data.body.trim()
             })
             .returning({ id: messages.id });
@@ -41,12 +68,64 @@ export async function postMessage(input: unknown) {
             );
         }
 
+        if (mentionIds.length > 0) {
+            await tx
+                .insert(mentions)
+                .values(mentionIds.map((uid) => ({ messageId: message!.id, mentionedUserId: uid })));
+        }
+
         return message!.id;
     });
 
-    // Fire-and-forget: unfurl any links, then emit message.updated when ready.
     void ensureMessageLinkPreviews(messageId, data.body);
-
-    // No realtime echo until commit; revalidate so the sender sees it instantly.
     revalidatePath(`/channels/${data.channelId}`);
+}
+
+export async function editMessage(input: unknown) {
+    const data = editMessageSchema.parse(input);
+
+    const message = await db.query.messages.findFirst({ where: eq(messages.id, data.messageId) });
+    if (!message || message.deletedAt) throw new Error("Message not found");
+
+    const { user, channel, membership } = await authorizeChannel(message.channelId, "channel:view");
+    const isAuthor = message.authorUserId === user.id;
+    const canEdit =
+        (isAuthor && canInChannel(user, membership, channel, "message:edit_own")) ||
+        canInChannel(user, membership, channel, "message:edit_any");
+    if (!canEdit) throw new Error("Not authorized");
+
+    const mentionIds = await memberIdsIn(message.channelId, data.mentionUserIds);
+
+    await db.transaction(async (tx) => {
+        await tx
+            .update(messages)
+            .set({ body: data.body.trim(), editedAt: new Date(), updatedAt: new Date() })
+            .where(eq(messages.id, data.messageId));
+        await tx.delete(mentions).where(eq(mentions.messageId, data.messageId));
+        if (mentionIds.length > 0) {
+            await tx
+                .insert(mentions)
+                .values(mentionIds.map((uid) => ({ messageId: data.messageId, mentionedUserId: uid })));
+        }
+    });
+
+    void ensureMessageLinkPreviews(data.messageId, data.body);
+    revalidatePath(`/channels/${message.channelId}`);
+}
+
+export async function deleteMessage(messageId: string) {
+    const message = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
+    if (!message || message.deletedAt) return;
+
+    const { user, channel, membership } = await authorizeChannel(message.channelId, "channel:view");
+    const isAuthor = message.authorUserId === user.id;
+    const canDelete = isAuthor || canInChannel(user, membership, channel, "message:delete_any");
+    if (!canDelete) throw new Error("Not authorized");
+
+    await db
+        .update(messages)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(eq(messages.id, messageId));
+
+    revalidatePath(`/channels/${message.channelId}`);
 }

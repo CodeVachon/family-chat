@@ -3,8 +3,10 @@ import { relations } from "drizzle-orm";
 import { attachments } from "./attachments";
 import { account, session, user } from "./auth";
 import { channelMembers, channels } from "./channels";
+import { mentions } from "./mentions";
 import { messages } from "./messages";
 import { userPreferences } from "./preferences";
+import { messageReactions } from "./reactions";
 
 export const userRelations = relations(user, ({ one, many }) => ({
     preferences: one(userPreferences, {
@@ -67,7 +69,37 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
         fields: [messages.authorUserId],
         references: [user.id]
     }),
-    attachments: many(attachments)
+    threadRoot: one(messages, {
+        fields: [messages.threadRootId],
+        references: [messages.id],
+        relationName: "thread"
+    }),
+    replies: many(messages, { relationName: "thread" }),
+    attachments: many(attachments),
+    reactions: many(messageReactions),
+    mentions: many(mentions)
+}));
+
+export const messageReactionsRelations = relations(messageReactions, ({ one }) => ({
+    message: one(messages, {
+        fields: [messageReactions.messageId],
+        references: [messages.id]
+    }),
+    user: one(user, {
+        fields: [messageReactions.userId],
+        references: [user.id]
+    })
+}));
+
+export const mentionsRelations = relations(mentions, ({ one }) => ({
+    message: one(messages, {
+        fields: [mentions.messageId],
+        references: [messages.id]
+    }),
+    mentionedUser: one(user, {
+        fields: [mentions.mentionedUserId],
+        references: [user.id]
+    })
 }));
 
 export const attachmentsRelations = relations(attachments, ({ one }) => ({

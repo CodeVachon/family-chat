@@ -1,9 +1,15 @@
 import "server-only";
 
-import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@workspace/db/client";
-import { channelMembers, channels, linkPreviews, messages } from "@workspace/db/schema";
+import {
+    channelMembers,
+    channels,
+    linkPreviews,
+    messages,
+    type MessageReaction
+} from "@workspace/db/schema";
 import { extractUrls } from "@/lib/messaging/links";
 import type { ChannelRole } from "@/lib/permissions";
 
@@ -15,6 +21,69 @@ const authorWith = {
         }
     }
 } as const;
+
+const messageWith = {
+    author: authorWith,
+    attachments: true,
+    reactions: true,
+    mentions: { with: { mentionedUser: authorWith } }
+} as const;
+
+export type ReactionSummary = { emoji: string; count: number; reactedByMe: boolean };
+export type MentionSummary = { userId: string; name: string; colorHue: number };
+
+function aggregateReactions(reactions: MessageReaction[], userId: string): ReactionSummary[] {
+    const byEmoji = new Map<string, ReactionSummary>();
+    for (const rx of reactions) {
+        const entry = byEmoji.get(rx.emoji) ?? { emoji: rx.emoji, count: 0, reactedByMe: false };
+        entry.count++;
+        if (rx.userId === userId) entry.reactedByMe = true;
+        byEmoji.set(rx.emoji, entry);
+    }
+    return [...byEmoji.values()];
+}
+
+/** Single source of the relational message-row shape used by all message lists. */
+function queryMessages(where: SQL | undefined, limit?: number) {
+    return db.query.messages.findMany({
+        where,
+        orderBy: asc(messages.createdAt),
+        limit,
+        with: messageWith
+    });
+}
+
+type RawMessageRow = Awaited<ReturnType<typeof queryMessages>>[number];
+
+/** Attach link previews, aggregated reactions, and mention summaries to messages. */
+async function decorateMessages(rows: RawMessageRow[], userId: string) {
+    const urls = [...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(r.body))))];
+    const previewByUrl = new Map<string, typeof linkPreviews.$inferSelect>();
+    if (urls.length > 0) {
+        const previews = await db.query.linkPreviews.findMany({
+            where: and(inArray(linkPreviews.url, urls), eq(linkPreviews.status, "ok"))
+        });
+        for (const p of previews) previewByUrl.set(p.url, p);
+    }
+
+    return rows.map((r) => ({
+        ...r,
+        reactions: aggregateReactions(r.reactions, userId),
+        mentions: r.mentions.map(
+            (m): MentionSummary => ({
+                userId: m.mentionedUserId,
+                name: m.mentionedUser.preferences?.displayName ?? m.mentionedUser.name,
+                colorHue: m.mentionedUser.preferences?.colorHue ?? 220
+            })
+        ),
+        mentionsMe: r.mentions.some((m) => m.mentionedUserId === userId),
+        linkPreviews: r.deletedAt
+            ? []
+            : extractUrls(r.body)
+                  .map((u) => previewByUrl.get(u))
+                  .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    }));
+}
 
 /**
  * Channels visible to a user: all public channels, plus private channels they
@@ -54,36 +123,49 @@ export async function getChannel(channelId: string) {
     return db.query.channels.findFirst({ where: eq(channels.id, channelId) });
 }
 
-/** Messages for a channel in chronological order (newest at the bottom). */
-export async function listChannelMessages(channelId: string, limit = 200) {
-    const rows = await db.query.messages.findMany({
-        where: eq(messages.channelId, channelId),
-        orderBy: asc(messages.createdAt),
-        limit,
-        with: { author: authorWith, attachments: true }
+/** Top-level channel messages (no thread replies) in chronological order. */
+export async function listChannelMessages(channelId: string, userId: string, limit = 200) {
+    const rows = await queryMessages(
+        and(eq(messages.channelId, channelId), isNull(messages.threadRootId)),
+        limit
+    );
+
+    const decorated = await decorateMessages(rows, userId);
+
+    // Reply counts + last reply time per root message.
+    const ids = rows.map((r) => r.id);
+    const replyAgg = ids.length
+        ? await db
+              .select({
+                  rootId: messages.threadRootId,
+                  count: sql<number>`count(*)::int`,
+                  last: sql<string>`max(${messages.createdAt})`
+              })
+              .from(messages)
+              .where(and(inArray(messages.threadRootId, ids), isNull(messages.deletedAt)))
+              .groupBy(messages.threadRootId)
+        : [];
+    const replyByRoot = new Map(replyAgg.map((a) => [a.rootId, a]));
+
+    return decorated.map((d) => {
+        const agg = replyByRoot.get(d.id);
+        return {
+            ...d,
+            replyCount: agg?.count ?? 0,
+            lastReplyAt: agg?.last ? new Date(agg.last) : null
+        };
     });
-
-    // Attach cached OK link previews, matched by URLs in each (non-deleted) body.
-    const urls = [...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(r.body))))];
-    const previewByUrl = new Map<string, (typeof linkPreviews.$inferSelect)>();
-    if (urls.length > 0) {
-        const previews = await db.query.linkPreviews.findMany({
-            where: and(inArray(linkPreviews.url, urls), eq(linkPreviews.status, "ok"))
-        });
-        for (const p of previews) previewByUrl.set(p.url, p);
-    }
-
-    return rows.map((r) => ({
-        ...r,
-        linkPreviews: r.deletedAt
-            ? []
-            : extractUrls(r.body)
-                  .map((u) => previewByUrl.get(u))
-                  .filter((p): p is NonNullable<typeof p> => Boolean(p))
-    }));
 }
 
 export type ChannelMessage = Awaited<ReturnType<typeof listChannelMessages>>[number];
+
+/** A thread: the root message followed by its replies, chronologically. */
+export async function listThreadMessages(rootId: string, userId: string) {
+    const rows = await queryMessages(or(eq(messages.id, rootId), eq(messages.threadRootId, rootId)));
+    return decorateMessages(rows, userId);
+}
+
+export type ThreadMessage = Awaited<ReturnType<typeof listThreadMessages>>[number];
 
 export async function listChannelMembers(channelId: string) {
     return db.query.channelMembers.findMany({

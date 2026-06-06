@@ -5,4 +5,6 @@ export * from "./channels";
 export * from "./messages";
 export * from "./attachments";
 export * from "./link-previews";
+export * from "./reactions";
+export * from "./mentions";
 export * from "./relations";

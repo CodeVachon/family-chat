@@ -9,6 +9,7 @@ export type RealtimeEvent = {
         | "message.created"
         | "message.updated"
         | "message.deleted"
+        | "reaction.changed"
         | "read.updated"
         | "channels.changed"
         | "typing"
