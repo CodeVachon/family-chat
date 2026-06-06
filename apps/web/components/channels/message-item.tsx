@@ -11,9 +11,9 @@ import { MessageAttachments } from "@/components/channels/message-attachments";
 import { MessageBody } from "@/components/channels/message-body";
 import { MessageToolbar, type MessageViewer } from "@/components/channels/message-toolbar";
 import { ReactionBar } from "@/components/channels/reaction-bar";
+import { Timestamp } from "@/components/preferences/user-prefs";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { editMessage } from "@/lib/actions/messages";
-import { formatMessageTime } from "@/lib/format";
 import type { ChannelMessage, ThreadMessage } from "@/lib/queries/channels";
 import { Button } from "@workspace/ui/components/button";
 import { Textarea } from "@workspace/ui/components/textarea";
@@ -104,9 +104,7 @@ export function MessageItem({
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                     <UserName name={name} colorHue={hue} className="text-sm" />
-                    <span className="text-xs text-muted-foreground">
-                        {formatMessageTime(message.createdAt)}
-                    </span>
+                    <Timestamp date={message.createdAt} className="text-xs text-muted-foreground" />
                     {message.editedAt && !deleted && (
                         <span className="text-xs text-muted-foreground">(edited)</span>
                     )}

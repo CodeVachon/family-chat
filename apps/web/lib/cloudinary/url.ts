@@ -29,3 +29,8 @@ export function pdfThumbUrl(secureUrl: string): string {
 export function pdfPageUrl(secureUrl: string, page: number): string {
     return withTransform(secureUrl, `pg_${page},w_1000,q_auto,f_jpg`);
 }
+
+/** Square, face-aware avatar crop. */
+export function avatarUrl(secureUrl: string): string {
+    return withTransform(secureUrl, "c_fill,g_auto,w_256,h_256,q_auto,f_auto");
+}

@@ -5,17 +5,12 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@workspace/ui/lib/utils";
 
-const TABS = [
-    { href: "/admin/approvals", label: "Approvals" },
-    { href: "/admin/users", label: "Users" }
-];
-
-export function AdminNav() {
+/** A pill-style tab bar that highlights the active route by path prefix. */
+export function TabNav({ tabs }: { tabs: { href: string; label: string }[] }) {
     const pathname = usePathname();
-
     return (
         <nav className="mb-6 inline-flex gap-1 rounded-lg bg-muted p-1">
-            {TABS.map((tab) => {
+            {tabs.map((tab) => {
                 const active = pathname.startsWith(tab.href);
                 return (
                     <Link

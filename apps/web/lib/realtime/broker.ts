@@ -12,6 +12,7 @@ export type RealtimeEvent = {
         | "reaction.changed"
         | "read.updated"
         | "channels.changed"
+        | "users.changed"
         | "typing"
         | "presence"
         | "presence.snapshot";

@@ -99,6 +99,7 @@ export function RealtimeProvider({
                 case "message.deleted":
                 case "reaction.changed":
                 case "read.updated":
+                case "users.changed":
                 case "resync":
                     scheduleRefresh();
                     break;

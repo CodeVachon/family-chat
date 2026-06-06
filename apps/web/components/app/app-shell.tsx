@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, ShieldCheck } from "lucide-react";
+import { Menu, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -15,6 +15,7 @@ export type ShellUser = {
     email: string;
     appRole: string;
     colorHue: number;
+    avatarUrl: string | null;
 };
 
 function SidebarContents({
@@ -43,6 +44,14 @@ function SidebarContents({
             </ScrollArea>
 
             <div className="border-t p-3">
+                <Link
+                    href="/settings"
+                    onClick={onNavigate}
+                    className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                    <Settings className="size-4" />
+                    Settings
+                </Link>
                 {canAccessAdmin && (
                     <Link
                         href="/admin"
@@ -53,8 +62,8 @@ function SidebarContents({
                         Admin
                     </Link>
                 )}
-                <div className="flex items-center gap-2">
-                    <UserAvatar name={user.name} colorHue={user.colorHue} />
+                <div className="mt-2 flex items-center gap-2">
+                    <UserAvatar name={user.name} colorHue={user.colorHue} avatarUrl={user.avatarUrl} />
                     <div className="min-w-0 flex-1">
                         <UserName
                             name={user.name}
