@@ -13,6 +13,7 @@ export type RealtimeEvent = {
         | "read.updated"
         | "channels.changed"
         | "users.changed"
+        | "settings.changed"
         | "typing"
         | "presence"
         | "presence.snapshot";

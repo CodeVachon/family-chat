@@ -23,18 +23,30 @@ function SidebarContents({
     user,
     channels,
     canAccessAdmin,
+    appName,
+    appIconUrl,
     onNavigate
 }: {
     user: ShellUser;
     channels: SidebarChannel[];
     canAccessAdmin: boolean;
+    appName: string;
+    appIconUrl: string | null;
     onNavigate?: () => void;
 }) {
     return (
         <div className="flex h-full flex-col">
             <div className="flex h-14 items-center border-b px-4">
-                <Link href="/channels" onClick={onNavigate} className="font-heading text-lg font-semibold">
-                    Family Chat
+                <Link
+                    href="/channels"
+                    onClick={onNavigate}
+                    className="flex items-center gap-2 font-heading text-lg font-semibold"
+                >
+                    {appIconUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={appIconUrl} alt="" className="size-6 rounded" />
+                    )}
+                    <span className="truncate">{appName}</span>
                 </Link>
             </div>
 
@@ -64,11 +76,15 @@ export function AppShell({
     user,
     channels,
     canAccessAdmin,
+    appName,
+    appIconUrl,
     children
 }: {
     user: ShellUser;
     channels: SidebarChannel[];
     canAccessAdmin: boolean;
+    appName: string;
+    appIconUrl: string | null;
     children: React.ReactNode;
 }) {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -78,7 +94,13 @@ export function AppShell({
             <QuickSwitcher channels={channels} />
             {/* Desktop sidebar */}
             <aside className="hidden border-r bg-card md:block">
-                <SidebarContents user={user} channels={channels} canAccessAdmin={canAccessAdmin} />
+                <SidebarContents
+                    user={user}
+                    channels={channels}
+                    canAccessAdmin={canAccessAdmin}
+                    appName={appName}
+                    appIconUrl={appIconUrl}
+                />
             </aside>
 
             <div className="flex h-svh min-h-0 flex-col">
@@ -97,11 +119,19 @@ export function AppShell({
                                 user={user}
                                 channels={channels}
                                 canAccessAdmin={canAccessAdmin}
+                                appName={appName}
+                                appIconUrl={appIconUrl}
                                 onNavigate={() => setMobileOpen(false)}
                             />
                         </SheetContent>
                     </Sheet>
-                    <span className="font-heading text-base font-semibold">Family Chat</span>
+                    <span className="flex items-center gap-2 font-heading text-base font-semibold">
+                        {appIconUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={appIconUrl} alt="" className="size-5 rounded" />
+                        )}
+                        {appName}
+                    </span>
                 </header>
 
                 <ConnectionBanner />

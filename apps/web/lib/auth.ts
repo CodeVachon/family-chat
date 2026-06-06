@@ -6,9 +6,15 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 
 import { magicLinkEmail, sendEmail, verificationEmail } from "./email";
+
+/** Current application name (for email branding), falling back to the default. */
+async function appName(): Promise<string> {
+    const row = await db.query.appSettings.findFirst({ where: eq(schema.appSettings.id, "app") });
+    return row?.name ?? "Family Chat";
+}
 
 export const auth = betterAuth({
     appName: "Family Chat",
@@ -28,15 +34,17 @@ export const auth = betterAuth({
         // sign-in on email verification. A verification email is still available.
         requireEmailVerification: false,
         sendResetPassword: async ({ user, url }) => {
-            const { subject, html } = verificationEmail(url);
-            await sendEmail({ to: user.email, subject, html });
+            const name = await appName();
+            const { subject, html } = verificationEmail(url, name);
+            await sendEmail({ to: user.email, subject, html, fromName: name });
         }
     },
 
     emailVerification: {
         sendVerificationEmail: async ({ user, url }) => {
-            const { subject, html } = verificationEmail(url);
-            await sendEmail({ to: user.email, subject, html });
+            const name = await appName();
+            const { subject, html } = verificationEmail(url, name);
+            await sendEmail({ to: user.email, subject, html, fromName: name });
         }
     },
 
@@ -97,8 +105,9 @@ export const auth = betterAuth({
     plugins: [
         magicLink({
             sendMagicLink: async ({ email, url }) => {
-                const { subject, html } = magicLinkEmail(url);
-                await sendEmail({ to: email, subject, html });
+                const name = await appName();
+                const { subject, html } = magicLinkEmail(url, name);
+                await sendEmail({ to: email, subject, html, fromName: name });
             }
         }),
         // nextCookies() must be last so server actions can set the session cookie.

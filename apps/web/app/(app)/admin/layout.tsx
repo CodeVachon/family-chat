@@ -6,7 +6,8 @@ import { isAppStaff } from "@/lib/permissions";
 
 const TABS = [
     { href: "/admin/approvals", label: "Approvals" },
-    { href: "/admin/users", label: "Users" }
+    { href: "/admin/users", label: "Users" },
+    { href: "/admin/application", label: "Application" }
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -2,10 +2,13 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { z } from "zod";
 
 import { db } from "@workspace/db/client";
 import { user as userTable } from "@workspace/db/schema";
 
+import { auth } from "@/lib/auth";
 import { requireApprovedUser } from "@/lib/dal";
 import { canApp, type AppAction } from "@/lib/permissions";
 
@@ -83,4 +86,58 @@ export async function demoteToUser(formData: FormData) {
             .set({ appRole: "user", updatedAt: new Date() })
             .where(eq(userTable.id, targetUserId));
     });
+}
+
+/** Revoke a user's approval, sending them back to the pending state. */
+export async function unapproveUser(formData: FormData) {
+    await adminAction("user:reject", formData, async (targetUserId) => {
+        await assertNotOwner(targetUserId);
+        await db
+            .update(userTable)
+            .set({
+                approvalStatus: "pending",
+                approvedAt: null,
+                approvedByUserId: null,
+                updatedAt: new Date()
+            })
+            .where(eq(userTable.id, targetUserId));
+    });
+}
+
+const inviteSchema = z.object({
+    name: z.string().trim().min(1, "Name is required").max(80),
+    email: z.email("Enter a valid email").transform((v) => v.toLowerCase())
+});
+
+/** Create an approved user and email them a magic sign-in link. */
+export async function inviteUser(input: unknown) {
+    const actor = await requireApprovedUser();
+    if (!canApp(actor, "user:approve")) throw new Error("Not authorized");
+
+    const data = inviteSchema.parse(input);
+
+    const existing = await db.query.user.findFirst({
+        where: eq(userTable.email, data.email),
+        columns: { id: true }
+    });
+    if (existing) throw new Error("A user with that email already exists");
+
+    await db.insert(userTable).values({
+        id: crypto.randomUUID(),
+        name: data.name,
+        email: data.email,
+        emailVerified: true,
+        appRole: "user",
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        approvedByUserId: actor.id
+    });
+
+    await auth.api.signInMagicLink({
+        body: { email: data.email, callbackURL: "/" },
+        headers: await headers()
+    });
+
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/approvals");
 }

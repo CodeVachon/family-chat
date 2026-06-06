@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { TextField } from "@/components/auth/text-field";
+import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateProfile } from "@/lib/actions/preferences";
 import { avatarUrl as avatarTransform } from "@/lib/cloudinary/url";
-import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
 import { cn } from "@workspace/ui/lib/utils";
@@ -24,8 +24,6 @@ function Preview({
     avatarUrl: string | null;
     dark?: boolean;
 }) {
-    // Self-contained: force the box's background and the user-color tokens for
-    // this mode so the preview is correct regardless of the app's current theme.
     const tokens = dark
         ? { "--user-l": "0.78", "--user-c": "0.11" }
         : { "--user-l": "0.5", "--user-c": "0.13" };
@@ -53,7 +51,6 @@ export function ProfileForm({
     initial: { displayName: string; colorHue: number; avatarUrl: string | null; fallbackName: string };
 }) {
     const router = useRouter();
-    const fileRef = useRef<HTMLInputElement>(null);
     const [displayName, setDisplayName] = useState(initial.displayName);
     const [colorHue, setColorHue] = useState(initial.colorHue);
     const [avatar, setAvatar] = useState(initial.avatarUrl);
@@ -61,18 +58,6 @@ export function ProfileForm({
     const [pending, setPending] = useState(false);
 
     const previewName = displayName.trim() || initial.fallbackName;
-
-    async function onAvatarSelected(file: File) {
-        setUploading(true);
-        try {
-            const res = await uploadToCloudinary(file);
-            setAvatar(avatarTransform(res.secureUrl));
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Upload failed");
-        } finally {
-            setUploading(false);
-        }
-    }
 
     async function save() {
         setPending(true);
@@ -89,35 +74,16 @@ export function ProfileForm({
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-4">
-                <UserAvatar name={previewName} colorHue={colorHue} avatarUrl={avatar} className="size-16" />
-                <div className="flex gap-2">
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) void onAvatarSelected(f);
-                            e.target.value = "";
-                        }}
-                    />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        disabled={uploading}
-                        onClick={() => fileRef.current?.click()}
-                    >
-                        {uploading ? "Uploading…" : "Upload avatar"}
-                    </Button>
-                    {avatar && (
-                        <Button type="button" variant="ghost" onClick={() => setAvatar(null)}>
-                            Remove
-                        </Button>
-                    )}
-                </div>
-            </div>
+            <ImageUploadField
+                value={avatar}
+                onChange={setAvatar}
+                transform={avatarTransform}
+                uploadLabel="Upload avatar"
+                onUploadingChange={setUploading}
+                renderPreview={(url) => (
+                    <UserAvatar name={previewName} colorHue={colorHue} avatarUrl={url} className="size-16" />
+                )}
+            />
 
             <TextField
                 id="displayName"

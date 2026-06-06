@@ -4,15 +4,17 @@ import { UserPrefsProvider } from "@/components/preferences/user-prefs";
 import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 import { requireApprovedUser } from "@/lib/dal";
 import { isAppStaff } from "@/lib/permissions";
+import { getAppSettings } from "@/lib/queries/app-settings";
 import { listVisibleChannels } from "@/lib/queries/channels";
 import { getUserPreferences } from "@/lib/queries/preferences";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
     const user = await requireApprovedUser();
 
-    const [prefs, channels] = await Promise.all([
+    const [prefs, channels, appSettings] = await Promise.all([
         getUserPreferences(user.id),
-        listVisibleChannels(user.id)
+        listVisibleChannels(user.id),
+        getAppSettings()
     ]);
 
     const sidebarChannels: SidebarChannel[] = channels.map((c) => ({
@@ -39,6 +41,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     }}
                     channels={sidebarChannels}
                     canAccessAdmin={isAppStaff(user)}
+                    appName={appSettings.name}
+                    appIconUrl={appSettings.iconUrl}
                 >
                     {children}
                 </AppShell>

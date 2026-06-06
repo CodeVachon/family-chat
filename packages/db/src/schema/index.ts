@@ -7,4 +7,5 @@ export * from "./attachments";
 export * from "./link-previews";
 export * from "./reactions";
 export * from "./mentions";
+export * from "./app-settings";
 export * from "./relations";

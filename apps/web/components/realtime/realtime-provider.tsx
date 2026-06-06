@@ -20,6 +20,18 @@ export function useRealtime(): RealtimeContextValue {
     return ctx;
 }
 
+// Event types that simply require refetching server data.
+const REFRESH_EVENTS = new Set([
+    "message.created",
+    "message.updated",
+    "message.deleted",
+    "reaction.changed",
+    "read.updated",
+    "users.changed",
+    "settings.changed",
+    "resync"
+]);
+
 const TYPING_TTL_MS = 5000;
 const TYPING_THROTTLE_MS = 3000;
 const REFRESH_DEBOUNCE_MS = 150;
@@ -101,40 +113,34 @@ export function RealtimeProvider({
                 return;
             }
 
-            switch (event.type) {
-                case "message.created":
-                case "message.updated":
-                case "message.deleted":
-                case "reaction.changed":
-                case "read.updated":
-                case "users.changed":
-                case "resync":
-                    scheduleRefresh();
-                    break;
-                case "channels.changed":
-                    // Refresh the UI and reconnect so the subscription set
-                    // picks up newly-visible channels for live message delivery.
-                    scheduleRefresh();
-                    scheduleReconnect();
-                    break;
-                case "typing":
-                    if (event.userId && event.userId !== userId && event.channelId) {
-                        addTyping(event.channelId, event.userId, event.name ?? "Someone");
-                    }
-                    break;
-                case "presence.snapshot":
-                    setOnlineUserIds(new Set(event.onlineUserIds ?? []));
-                    break;
-                case "presence":
-                    if (event.userId) {
-                        setOnlineUserIds((prev) => {
-                            const next = new Set(prev);
-                            if (event.online) next.add(event.userId!);
-                            else next.delete(event.userId!);
-                            return next;
-                        });
-                    }
-                    break;
+            if (REFRESH_EVENTS.has(event.type)) {
+                scheduleRefresh();
+                return;
+            }
+            if (event.type === "channels.changed") {
+                // Refresh + reconnect so the subscription set picks up
+                // newly-visible channels for live message delivery.
+                scheduleRefresh();
+                scheduleReconnect();
+                return;
+            }
+            if (event.type === "typing") {
+                if (event.userId && event.userId !== userId && event.channelId) {
+                    addTyping(event.channelId, event.userId, event.name ?? "Someone");
+                }
+                return;
+            }
+            if (event.type === "presence.snapshot") {
+                setOnlineUserIds(new Set(event.onlineUserIds ?? []));
+                return;
+            }
+            if (event.type === "presence" && event.userId) {
+                setOnlineUserIds((prev) => {
+                    const next = new Set(prev);
+                    if (event.online) next.add(event.userId!);
+                    else next.delete(event.userId!);
+                    return next;
+                });
             }
         };
 
