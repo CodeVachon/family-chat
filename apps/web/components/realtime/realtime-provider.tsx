@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 type TypingUser = { userId: string; name: string };
 
 type RealtimeContextValue = {
+    connected: boolean;
     onlineUserIds: Set<string>;
     typingUsersFor: (channelId: string) => TypingUser[];
     sendTyping: (channelId: string) => void;
@@ -34,6 +35,7 @@ export function RealtimeProvider({
     children: React.ReactNode;
 }) {
     const router = useRouter();
+    const [connected, setConnected] = useState(true);
     const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
     const [, setTypingVersion] = useState(0);
     // Bumping this reconnects the EventSource so its channel subscription is
@@ -73,9 +75,15 @@ export function RealtimeProvider({
         const source = new EventSource("/api/stream");
 
         source.onopen = () => {
+            setConnected(true);
             // On a reconnect we may have missed events — refetch.
             if (openedOnce) scheduleRefresh();
             openedOnce = true;
+        };
+
+        source.onerror = () => {
+            // EventSource auto-reconnects; reflect the dropped state meanwhile.
+            setConnected(false);
         };
 
         source.onmessage = (e) => {
@@ -170,7 +178,7 @@ export function RealtimeProvider({
     }, []);
 
     return (
-        <RealtimeContext.Provider value={{ onlineUserIds, typingUsersFor, sendTyping }}>
+        <RealtimeContext.Provider value={{ connected, onlineUserIds, typingUsersFor, sendTyping }}>
             {children}
         </RealtimeContext.Provider>
     );

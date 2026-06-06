@@ -41,6 +41,8 @@ export function PdfAttachment({ attachment }: { attachment: PdfAttachmentData })
                         src={pdfThumbUrl(attachment.secureUrl)}
                         alt={`First page of ${name}`}
                         onError={() => setThumbFailed(true)}
+                        loading="lazy"
+                        decoding="async"
                         className="max-h-72 w-full border-b bg-muted object-contain"
                     />
                 ) : (

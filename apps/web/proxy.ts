@@ -1,10 +1,13 @@
-import { getCookieCache } from "better-auth/cookies";
+import { getCookieCache, getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Optimistic auth/approval routing. This is NOT the security boundary — the DAL
- * (requireApprovedUser) is. Proxy only reads the cached session cookie to avoid
- * UI flashes and pre-filter obvious redirects. It runs on the Node.js runtime.
+ * (requireApprovedUser) is. It runs on the Node.js runtime.
+ *
+ * Login is detected by the long-lived session token cookie; the short-lived
+ * cookie cache is used only for the optimistic approval redirect (and may be
+ * absent once it lapses, in which case the DAL enforces approval authoritatively).
  */
 
 const AUTH_ROUTES = ["/login", "/signup"];
@@ -17,31 +20,37 @@ type CachedSession = {
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    const session = (await getCookieCache(request)) as CachedSession;
-    const isAuthed = Boolean(session?.user);
-    const isApproved = session?.user?.approvalStatus === "approved";
+    const hasSession = Boolean(getSessionCookie(request));
+    const cached = (await getCookieCache(request)) as CachedSession;
+    const approvalKnown = Boolean(cached?.user);
+    const isApproved = cached?.user?.approvalStatus === "approved";
 
     const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r));
     const isPendingRoute = pathname.startsWith(PENDING_ROUTE);
 
-    // Unauthenticated: allow auth routes, redirect everything else to /login.
-    if (!isAuthed) {
+    // Not logged in: allow auth routes, redirect everything else to /login.
+    if (!hasSession) {
         if (isAuthRoute) return NextResponse.next();
         const url = request.nextUrl.clone();
         url.pathname = "/login";
         return NextResponse.redirect(url);
     }
 
-    // Authenticated but not approved: keep them on /pending.
-    if (!isApproved) {
-        if (isPendingRoute) return NextResponse.next();
+    // Logged in — keep them off the auth screens.
+    if (isAuthRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+    }
+
+    // Optimistic approval routing — only act when the cache tells us definitively.
+    // When the cache has lapsed, let the request through; the DAL gates approval.
+    if (approvalKnown && !isApproved && !isPendingRoute) {
         const url = request.nextUrl.clone();
         url.pathname = PENDING_ROUTE;
         return NextResponse.redirect(url);
     }
-
-    // Approved: keep them out of auth/pending screens.
-    if (isAuthRoute || isPendingRoute) {
+    if (approvalKnown && isApproved && isPendingRoute) {
         const url = request.nextUrl.clone();
         url.pathname = "/";
         return NextResponse.redirect(url);

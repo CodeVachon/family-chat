@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 
-function initials(name: string): string {
+export function initials(name: string): string {
     return (
         name
             .split(/\s+/)

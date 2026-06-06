@@ -1,14 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
+import { useRealtime } from "@/components/realtime/realtime-provider";
+import { UserAvatar, UserName } from "@/components/user/user-identity";
 import {
     addChannelMember,
     removeChannelMember,
     setChannelMemberRole
 } from "@/lib/actions/channel-members";
-import { useRealtime } from "@/components/realtime/realtime-provider";
-import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { Button } from "@workspace/ui/components/button";
 import {
     Dialog,
@@ -31,6 +33,10 @@ type Member = {
 const SELECT_CLASS =
     "h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus-visible:border-ring";
 
+function fail(err: unknown, fallback: string) {
+    toast.error(err instanceof Error ? err.message : fallback);
+}
+
 export function MembersDialog({
     trigger,
     channelId,
@@ -44,8 +50,57 @@ export function MembersDialog({
     canManage: boolean;
     addableUsers: { id: string; name: string }[];
 }) {
-    const [open, setOpen] = useState(false);
+    const router = useRouter();
     const { onlineUserIds } = useRealtime();
+    const [open, setOpen] = useState(false);
+    const [addUserId, setAddUserId] = useState("");
+    const [addRole, setAddRole] = useState("user");
+    const [busy, setBusy] = useState(false);
+
+    async function addMember() {
+        if (!addUserId || busy) return;
+        setBusy(true);
+        const fd = new FormData();
+        fd.set("channelId", channelId);
+        fd.set("userId", addUserId);
+        fd.set("role", addRole);
+        try {
+            await addChannelMember(fd);
+            toast.success("Member added");
+            setAddUserId("");
+            router.refresh();
+        } catch (err) {
+            fail(err, "Couldn't add member");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function changeRole(userId: string, role: string) {
+        const fd = new FormData();
+        fd.set("channelId", channelId);
+        fd.set("userId", userId);
+        fd.set("role", role);
+        try {
+            await setChannelMemberRole(fd);
+            router.refresh();
+        } catch (err) {
+            fail(err, "Couldn't update role");
+        }
+    }
+
+    async function removeMember(userId: string) {
+        const fd = new FormData();
+        fd.set("channelId", channelId);
+        fd.set("userId", userId);
+        try {
+            await removeChannelMember(fd);
+            toast.success("Member removed");
+            router.refresh();
+        } catch (err) {
+            fail(err, "Couldn't remove member");
+        }
+    }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -61,12 +116,12 @@ export function MembersDialog({
                 </DialogHeader>
 
                 {canManage && addableUsers.length > 0 && (
-                    <form
-                        action={addChannelMember}
-                        className="flex items-center gap-2 rounded-lg border p-2"
-                    >
-                        <input type="hidden" name="channelId" value={channelId} />
-                        <select name="userId" className={cn(SELECT_CLASS, "flex-1")} defaultValue="">
+                    <div className="flex items-center gap-2 rounded-lg border p-2">
+                        <select
+                            value={addUserId}
+                            onChange={(e) => setAddUserId(e.target.value)}
+                            className={cn(SELECT_CLASS, "flex-1")}
+                        >
                             <option value="" disabled>
                                 Add a person…
                             </option>
@@ -76,15 +131,19 @@ export function MembersDialog({
                                 </option>
                             ))}
                         </select>
-                        <select name="role" className={SELECT_CLASS} defaultValue="user">
+                        <select
+                            value={addRole}
+                            onChange={(e) => setAddRole(e.target.value)}
+                            className={SELECT_CLASS}
+                        >
                             <option value="admin">Admin</option>
                             <option value="user">User</option>
                             <option value="viewer">Viewer</option>
                         </select>
-                        <Button type="submit" size="sm">
+                        <Button size="sm" disabled={!addUserId || busy} onClick={() => void addMember()}>
                             Add
                         </Button>
-                    </form>
+                    </div>
                 )}
 
                 <div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
@@ -110,33 +169,26 @@ export function MembersDialog({
                                 </div>
                                 <UserName name={m.name} colorHue={m.colorHue} className="flex-1 truncate text-sm" />
                                 {editable ? (
-                                    <form action={setChannelMemberRole} className="flex items-center gap-1">
-                                        <input type="hidden" name="channelId" value={channelId} />
-                                        <input type="hidden" name="userId" value={m.userId} />
-                                        <select
-                                            name="role"
-                                            className={SELECT_CLASS}
-                                            defaultValue={m.role}
-                                        >
-                                            <option value="admin">Admin</option>
-                                            <option value="user">User</option>
-                                            <option value="viewer">Viewer</option>
-                                        </select>
-                                        <Button type="submit" size="sm" variant="outline">
-                                            Save
-                                        </Button>
-                                    </form>
+                                    <select
+                                        defaultValue={m.role}
+                                        onChange={(e) => void changeRole(m.userId, e.target.value)}
+                                        className={SELECT_CLASS}
+                                    >
+                                        <option value="admin">Admin</option>
+                                        <option value="user">User</option>
+                                        <option value="viewer">Viewer</option>
+                                    </select>
                                 ) : (
                                     <span className="text-xs text-muted-foreground capitalize">{m.role}</span>
                                 )}
                                 {editable && (
-                                    <form action={removeChannelMember}>
-                                        <input type="hidden" name="channelId" value={channelId} />
-                                        <input type="hidden" name="userId" value={m.userId} />
-                                        <Button type="submit" size="sm" variant="ghost">
-                                            Remove
-                                        </Button>
-                                    </form>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => void removeMember(m.userId)}
+                                    >
+                                        Remove
+                                    </Button>
                                 )}
                             </div>
                         );

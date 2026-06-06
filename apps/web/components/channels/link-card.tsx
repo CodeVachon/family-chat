@@ -13,6 +13,8 @@ export function LinkCard({ preview }: { preview: LinkPreview }) {
                 <img
                     src={preview.imageUrl}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="size-24 shrink-0 bg-muted object-cover"
                 />
             )}

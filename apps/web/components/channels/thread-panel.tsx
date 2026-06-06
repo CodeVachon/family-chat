@@ -3,9 +3,9 @@ import Link from "next/link";
 
 import { Composer, type ComposerMember } from "@/components/channels/composer";
 import { MessageItem } from "@/components/channels/message-item";
+import { MessageScroller } from "@/components/channels/message-scroller";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
 import { listThreadMessages } from "@/lib/queries/channels";
-import { ScrollArea } from "@workspace/ui/components/scroll-area";
 
 export async function ThreadPanel({
     channelId,
@@ -45,13 +45,13 @@ export async function ThreadPanel({
                 </div>
             ) : (
                 <>
-                    <ScrollArea className="min-h-0 flex-1">
+                    <MessageScroller bottomKey={`${messages[messages.length - 1]?.id}:${messages.length}`}>
                         <div className="py-4">
                             {messages.map((m) => (
                                 <MessageItem key={m.id} message={m} viewer={viewer} showReply={false} />
                             ))}
                         </div>
-                    </ScrollArea>
+                    </MessageScroller>
                     {canPost ? (
                         <Composer
                             channelId={channelId}

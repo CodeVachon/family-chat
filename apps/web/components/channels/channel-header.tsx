@@ -1,7 +1,8 @@
-import { Lock, Settings, Users } from "lucide-react";
+import { Lock, Settings } from "lucide-react";
 
 import { ChannelDialog } from "@/components/channels/channel-dialog";
 import { ChannelIcon } from "@/components/channels/channel-icon";
+import { MembersAvatarGroup } from "@/components/channels/members-avatar-group";
 import { MembersDialog } from "@/components/channels/members-dialog";
 import type { Channel } from "@workspace/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
@@ -52,10 +53,13 @@ export function ChannelHeader({
                 canManage={canManageMembers}
                 addableUsers={addableUsers}
                 trigger={
-                    <Button variant="ghost" size="sm">
-                        <Users className="size-4" />
-                        {members.length}
-                    </Button>
+                    <button
+                        type="button"
+                        aria-label={`${members.length} ${members.length === 1 ? "member" : "members"}`}
+                        className="flex items-center rounded-lg p-0.5 hover:bg-muted"
+                    >
+                        <MembersAvatarGroup members={members} />
+                    </button>
                 }
             />
 

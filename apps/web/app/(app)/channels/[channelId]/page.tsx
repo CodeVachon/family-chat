@@ -3,6 +3,7 @@ import { Composer } from "@/components/channels/composer";
 import { JoinButton } from "@/components/channels/join-button";
 import { MarkReadOnView } from "@/components/channels/mark-read-on-view";
 import { MessageList } from "@/components/channels/message-list";
+import { MessageScroller } from "@/components/channels/message-scroller";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
 import { ThreadPanel } from "@/components/channels/thread-panel";
 import { TypingIndicator } from "@/components/channels/typing-indicator";
@@ -10,7 +11,6 @@ import { authorizeChannel } from "@/lib/dal";
 import { canInChannel } from "@/lib/permissions";
 import { listChannelMembers, listChannelMessages } from "@/lib/queries/channels";
 import { listApprovedUsers } from "@/lib/queries/users";
-import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import { cn } from "@workspace/ui/lib/utils";
 
 export default async function ChannelPage({
@@ -72,9 +72,9 @@ export default async function ChannelPage({
                     addableUsers={addableUsers}
                 />
 
-                <ScrollArea className="min-h-0 flex-1">
+                <MessageScroller bottomKey={`${latestMessageId}:${messages.length}`}>
                     <MessageList messages={messages} viewer={viewer} />
-                </ScrollArea>
+                </MessageScroller>
 
                 <TypingIndicator channelId={channel.id} />
 

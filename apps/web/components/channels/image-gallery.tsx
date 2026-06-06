@@ -41,6 +41,8 @@ export function ImageGallery({ images }: { images: GalleryImage[] }) {
                             <img
                                 src={thumbUrl(img.secureUrl)}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 className={cn(
                                     "size-full",
                                     single ? "max-h-80 object-contain" : "object-cover"

@@ -1,12 +1,13 @@
 "use client";
 
-import { Menu, Settings, ShieldCheck } from "lucide-react";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { SignOutButton } from "@/components/auth/sign-out-button";
+import { ConnectionBanner } from "@/components/app/connection-banner";
+import { QuickSwitcher } from "@/components/app/quick-switcher";
+import { UserMenu } from "@/components/app/user-menu";
 import { ChannelList, type SidebarChannel } from "@/components/channels/channel-list";
-import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@workspace/ui/components/sheet";
 
@@ -43,37 +44,17 @@ function SidebarContents({
                 </div>
             </ScrollArea>
 
-            <div className="border-t p-3">
-                <Link
-                    href="/settings"
-                    onClick={onNavigate}
-                    className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
-                    <Settings className="size-4" />
-                    Settings
-                </Link>
-                {canAccessAdmin && (
-                    <Link
-                        href="/admin"
-                        onClick={onNavigate}
-                        className="mb-3 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                    >
-                        <ShieldCheck className="size-4" />
-                        Admin
-                    </Link>
-                )}
-                <div className="mt-2 flex items-center gap-2">
-                    <UserAvatar name={user.name} colorHue={user.colorHue} avatarUrl={user.avatarUrl} />
-                    <div className="min-w-0 flex-1">
-                        <UserName
-                            name={user.name}
-                            colorHue={user.colorHue}
-                            className="block truncate text-sm"
-                        />
-                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                </div>
-                <SignOutButton variant="outline" className="mt-3 w-full" />
+            <div className="border-t p-2">
+                <UserMenu
+                    user={{
+                        name: user.name,
+                        email: user.email,
+                        colorHue: user.colorHue,
+                        avatarUrl: user.avatarUrl
+                    }}
+                    canAccessAdmin={canAccessAdmin}
+                    onNavigate={onNavigate}
+                />
             </div>
         </div>
     );
@@ -94,6 +75,7 @@ export function AppShell({
 
     return (
         <div className="grid h-svh md:grid-cols-[16rem_1fr]">
+            <QuickSwitcher channels={channels} />
             {/* Desktop sidebar */}
             <aside className="hidden border-r bg-card md:block">
                 <SidebarContents user={user} channels={channels} canAccessAdmin={canAccessAdmin} />
@@ -122,6 +104,7 @@ export function AppShell({
                     <span className="font-heading text-base font-semibold">Family Chat</span>
                 </header>
 
+                <ConnectionBanner />
                 <main className="min-h-0 flex-1">{children}</main>
             </div>
         </div>
