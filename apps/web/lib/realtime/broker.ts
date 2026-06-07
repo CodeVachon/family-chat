@@ -10,6 +10,7 @@ export type RealtimeEvent = {
         | "message.updated"
         | "message.deleted"
         | "reaction.changed"
+        | "mention"
         | "read.updated"
         | "channels.changed"
         | "users.changed"
@@ -18,6 +19,7 @@ export type RealtimeEvent = {
         | "presence"
         | "presence.snapshot";
     channelId?: string;
+    channelName?: string;
     messageId?: string;
     actorId?: string;
     targetUserId?: string;

@@ -64,6 +64,20 @@
       "when": 1780715589950,
       "tag": "0008_broken_living_mummy",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780717239335,
+      "tag": "0009_narrow_whizzer",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780717239547,
+      "tag": "0010_mention_trigger",
+      "breakpoints": true
     }
   ]
 }

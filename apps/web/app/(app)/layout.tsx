@@ -25,11 +25,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         isPrivate: c.isPrivate,
         isArchived: c.isArchived,
         myRole: c.myRole,
-        unreadCount: c.unreadCount
+        unreadCount: c.unreadCount,
+        mentionCount: c.mentionCount
     }));
 
     return (
-        <RealtimeProvider userId={user.id}>
+        <RealtimeProvider userId={user.id} notificationLevel={prefs.notificationLevel}>
             <UserPrefsProvider prefs={prefs}>
                 <AppShell
                     user={{

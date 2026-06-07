@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type TypingUser = { userId: string; name: string };
 
@@ -41,9 +42,11 @@ type TypingMap = Map<string, Map<string, { name: string; expiresAt: number }>>;
 
 export function RealtimeProvider({
     userId,
+    notificationLevel,
     children
 }: {
     userId: string;
+    notificationLevel: "all" | "mentions" | "none";
     children: React.ReactNode;
 }) {
     const router = useRouter();
@@ -58,6 +61,55 @@ export function RealtimeProvider({
     const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastTypingSent = useRef(0);
+    // Read the latest level inside the (long-lived) EventSource handler.
+    const levelRef = useRef(notificationLevel);
+    useEffect(() => {
+        levelRef.current = notificationLevel;
+    }, [notificationLevel]);
+
+    const notify = useCallback(
+        (title: string, body: string, channelId: string) => {
+            toast(title, {
+                description: body,
+                action: { label: "View", onClick: () => router.push(`/channels/${channelId}`) }
+            });
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                const n = new Notification(title, { body });
+                n.onclick = () => {
+                    window.focus();
+                    router.push(`/channels/${channelId}`);
+                };
+            }
+        },
+        [router]
+    );
+
+    const viewingChannel = useCallback((channelId: string) => {
+        return typeof window !== "undefined" && window.location.pathname.includes(channelId);
+    }, []);
+
+    const maybeNotify = useCallback(
+        (event: { type: string; channelId?: string; channelName?: string; actorId?: string }) => {
+            const level = levelRef.current;
+            if (level === "none" || !event.channelId) return;
+            if (event.type === "mention") {
+                notify(
+                    "New mention",
+                    event.channelName ? `You were mentioned in #${event.channelName}` : "You were mentioned",
+                    event.channelId
+                );
+            } else if (
+                event.type === "message.created" &&
+                level === "all" &&
+                event.actorId &&
+                event.actorId !== userId &&
+                !viewingChannel(event.channelId)
+            ) {
+                notify("New message", "You have a new message", event.channelId);
+            }
+        },
+        [notify, userId, viewingChannel]
+    );
 
     const scheduleRefresh = useCallback(() => {
         if (refreshTimer.current) return;
@@ -102,6 +154,8 @@ export function RealtimeProvider({
             let event: {
                 type: string;
                 channelId?: string;
+                channelName?: string;
+                actorId?: string;
                 userId?: string;
                 name?: string;
                 online?: boolean;
@@ -113,8 +167,9 @@ export function RealtimeProvider({
                 return;
             }
 
-            if (REFRESH_EVENTS.has(event.type)) {
+            if (event.type === "mention" || REFRESH_EVENTS.has(event.type)) {
                 scheduleRefresh();
+                maybeNotify(event);
                 return;
             }
             if (event.type === "channels.changed") {
@@ -145,7 +200,7 @@ export function RealtimeProvider({
         };
 
         return () => source.close();
-    }, [userId, scheduleRefresh, scheduleReconnect, addTyping, connectionEpoch]);
+    }, [userId, scheduleRefresh, scheduleReconnect, addTyping, maybeNotify, connectionEpoch]);
 
     // Expire stale typing entries.
     useEffect(() => {

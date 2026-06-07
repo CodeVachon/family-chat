@@ -7,7 +7,11 @@ import { userPreferences } from "@workspace/db/schema";
 
 import { requireApprovedUser } from "@/lib/dal";
 import { getBroker } from "@/lib/realtime/broker";
-import { appearancePrefsSchema, profilePrefsSchema } from "@/lib/validation/preferences";
+import {
+    appearancePrefsSchema,
+    notificationPrefsSchema,
+    profilePrefsSchema
+} from "@/lib/validation/preferences";
 
 async function upsertPreferences(userId: string, values: Record<string, unknown>) {
     await db
@@ -31,6 +35,13 @@ export async function updateProfile(input: unknown) {
 
 export async function updateAppearance(input: unknown) {
     const data = appearancePrefsSchema.parse(input);
+    const user = await requireApprovedUser();
+    await upsertPreferences(user.id, data);
+    revalidatePath("/", "layout");
+}
+
+export async function updateNotifications(input: unknown) {
+    const data = notificationPrefsSchema.parse(input);
     const user = await requireApprovedUser();
     await upsertPreferences(user.id, data);
     revalidatePath("/", "layout");

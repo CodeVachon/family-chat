@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ConnectionBanner } from "@/components/app/connection-banner";
+import { FaviconBadge } from "@/components/app/favicon-badge";
 import { QuickSwitcher } from "@/components/app/quick-switcher";
 import { UserMenu } from "@/components/app/user-menu";
 import { ChannelList, type SidebarChannel } from "@/components/channels/channel-list";
@@ -88,9 +89,11 @@ export function AppShell({
     children: React.ReactNode;
 }) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const totalUnread = channels.reduce((sum, c) => sum + c.unreadCount, 0);
 
     return (
         <div className="grid h-svh md:grid-cols-[16rem_1fr]">
+            <FaviconBadge count={totalUnread} />
             <QuickSwitcher channels={channels} />
             {/* Desktop sidebar */}
             <aside className="hidden border-r bg-card md:block">

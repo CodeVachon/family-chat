@@ -18,6 +18,7 @@ export type SidebarChannel = {
     isArchived: boolean;
     myRole: ChannelRole | null;
     unreadCount: number;
+    mentionCount: number;
 };
 
 function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boolean }) {
@@ -38,11 +39,18 @@ function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boo
                 {channel.name}
             </span>
             {channel.isPrivate && <Lock className="size-3 shrink-0 opacity-70" />}
-            {channel.unreadCount > 0 && (
+            {channel.mentionCount > 0 ? (
+                <span
+                    className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white"
+                    title={`${channel.mentionCount} mention${channel.mentionCount === 1 ? "" : "s"}`}
+                >
+                    @{channel.mentionCount > 99 ? "99+" : channel.mentionCount}
+                </span>
+            ) : channel.unreadCount > 0 ? (
                 <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
                     {channel.unreadCount > 99 ? "99+" : channel.unreadCount}
                 </span>
-            )}
+            ) : null}
         </Link>
     );
 }

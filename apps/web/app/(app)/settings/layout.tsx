@@ -4,6 +4,7 @@ import { requireApprovedUser } from "@/lib/dal";
 const TABS = [
     { href: "/settings/profile", label: "Profile" },
     { href: "/settings/appearance", label: "Appearance" },
+    { href: "/settings/notifications", label: "Notifications" },
     { href: "/settings/account", label: "Account" }
 ];
 

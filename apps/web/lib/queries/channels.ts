@@ -7,6 +7,7 @@ import {
     channelMembers,
     channels,
     linkPreviews,
+    mentions,
     messages,
     type MessageReaction
 } from "@workspace/db/schema";
@@ -100,8 +101,19 @@ export async function listVisibleChannels(userId: string) {
           AND (${channelMembers.lastReadAt} IS NULL OR m.created_at > ${channelMembers.lastReadAt})
     ) END`;
 
+    // Of those unread, how many mention the user.
+    const mentionCount = sql<number>`CASE WHEN ${channelMembers.userId} IS NULL THEN 0 ELSE (
+        SELECT COUNT(*)::int FROM ${messages} m
+        JOIN ${mentions} mn ON mn.message_id = m.id
+        WHERE m.channel_id = ${channels.id}
+          AND m.deleted_at IS NULL
+          AND mn.mentioned_user_id = ${userId}
+          AND m.author_user_id <> ${userId}
+          AND (${channelMembers.lastReadAt} IS NULL OR m.created_at > ${channelMembers.lastReadAt})
+    ) END`;
+
     const rows = await db
-        .select({ channel: channels, myRole: channelMembers.role, unreadCount })
+        .select({ channel: channels, myRole: channelMembers.role, unreadCount, mentionCount })
         .from(channels)
         .leftJoin(
             channelMembers,
@@ -113,7 +125,8 @@ export async function listVisibleChannels(userId: string) {
     return rows.map((r) => ({
         ...r.channel,
         myRole: (r.myRole as ChannelRole | null) ?? null,
-        unreadCount: Number(r.unreadCount ?? 0)
+        unreadCount: Number(r.unreadCount ?? 0),
+        mentionCount: Number(r.mentionCount ?? 0)
     }));
 }
 

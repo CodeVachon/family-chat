@@ -16,6 +16,8 @@ export const userPreferences = pgTable("user_preferences", {
     displayName: text("display_name"),
     dateTimeFormat: text("date_time_format").notNull().default("relative"),
     themePreference: text("theme_preference").notNull().default("system"),
+    // 'all' | 'mentions' | 'none'
+    notificationLevel: text("notification_level").notNull().default("mentions"),
     colorHue: integer("color_hue").notNull().default(220),
     avatarUrl: text("avatar_url"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
