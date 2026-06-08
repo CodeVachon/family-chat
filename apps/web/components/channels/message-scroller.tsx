@@ -15,10 +15,13 @@ const NEAR_BOTTOM_PX = 120;
 export function MessageScroller({
     bottomKey,
     className,
+    accentColor,
     children
 }: {
     bottomKey: string | number;
     className?: string;
+    /** Channel color (hex) used to tint the scrollbar. */
+    accentColor?: string | null;
     children: React.ReactNode;
 }) {
     const ref = useRef<HTMLDivElement>(null);
@@ -41,7 +44,12 @@ export function MessageScroller({
         <div
             ref={ref}
             onScroll={handleScroll}
-            className={cn("min-h-0 flex-1 overflow-y-auto", className)}
+            style={accentColor ? ({ "--scrollbar-accent": accentColor } as React.CSSProperties) : undefined}
+            className={cn(
+                "min-h-0 flex-1 overflow-y-auto",
+                accentColor && "channel-scrollbar",
+                className
+            )}
         >
             {children}
         </div>

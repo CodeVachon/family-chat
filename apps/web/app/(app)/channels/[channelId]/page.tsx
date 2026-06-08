@@ -72,7 +72,10 @@ export default async function ChannelPage({
                     addableUsers={addableUsers}
                 />
 
-                <MessageScroller bottomKey={`${latestMessageId}:${messages.length}`}>
+                <MessageScroller
+                    bottomKey={`${latestMessageId}:${messages.length}`}
+                    accentColor={channel.color}
+                >
                     <MessageList messages={messages} viewer={viewer} members={composerMembers} />
                 </MessageScroller>
 

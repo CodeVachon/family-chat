@@ -179,3 +179,31 @@
     @apply pointer-events-none float-left h-0 text-muted-foreground;
   }
 }
+
+@layer components {
+  /* Channel-tinted scrollbar for the message area. Forcing an explicit
+     ::-webkit-scrollbar makes it always visible (not overlay/auto-hiding), so
+     the track spans the full height of the scroll area. `--scrollbar-accent`
+     is set inline to the channel color. */
+  .channel-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-accent, var(--border))
+      color-mix(in oklab, var(--scrollbar-accent, var(--border)) 15%, transparent);
+  }
+  .channel-scrollbar::-webkit-scrollbar {
+    width: 10px;
+  }
+  .channel-scrollbar::-webkit-scrollbar-track {
+    background: color-mix(in oklab, var(--scrollbar-accent, var(--border)) 15%, transparent);
+  }
+  .channel-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-accent, var(--border));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .channel-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--scrollbar-accent, var(--border)) 80%, black);
+    background-clip: padding-box;
+  }
+}
