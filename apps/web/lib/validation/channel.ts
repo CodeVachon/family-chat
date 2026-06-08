@@ -65,7 +65,8 @@ export const postMessageSchema = z
     .object({
         channelId: z.string().uuid(),
         threadRootId: z.string().uuid().nullable().default(null),
-        body: z.string().max(4000),
+        // HTML body (rich text) — larger ceiling than the visible-text limit.
+        body: z.string().max(20000),
         attachments: z.array(attachmentInputSchema).max(10).default([]),
         mentionUserIds: z.array(z.string()).max(20).default([])
     })
@@ -76,7 +77,7 @@ export const postMessageSchema = z
 
 export const editMessageSchema = z.object({
     messageId: z.string().uuid(),
-    body: z.string().trim().min(1, "Message cannot be empty").max(4000),
+    body: z.string().trim().min(1, "Message cannot be empty").max(20000),
     mentionUserIds: z.array(z.string()).max(20).default([])
 });
 

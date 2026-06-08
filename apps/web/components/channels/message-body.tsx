@@ -1,13 +1,14 @@
 import { Fragment } from "react";
 
+import { isHtmlBody, renderMessageHtml } from "@/lib/messaging/rich-text";
 import type { MentionSummary } from "@/lib/queries/channels";
 
 function escapeRegex(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Render a message body, highlighting `@Name` tokens for mentioned members. */
-export function MessageBody({ body, mentions }: { body: string; mentions: MentionSummary[] }) {
+/** Legacy plain-text bodies: render with `@Name` tokens highlighted. */
+function PlainTextBody({ body, mentions }: { body: string; mentions: MentionSummary[] }) {
     const base = "text-sm break-words whitespace-pre-wrap";
     if (mentions.length === 0) {
         return <p className={base}>{body}</p>;
@@ -41,5 +42,24 @@ export function MessageBody({ body, mentions }: { body: string; mentions: Mentio
                 <Fragment key={i}>{n}</Fragment>
             ))}
         </p>
+    );
+}
+
+/** Render a message body. New messages are sanitized HTML; older ones plain text. */
+export function MessageBody({ body, mentions }: { body: string; mentions: MentionSummary[] }) {
+    if (!isHtmlBody(body)) {
+        return <PlainTextBody body={body} mentions={mentions} />;
+    }
+
+    const html = renderMessageHtml(
+        body,
+        mentions.map((m) => ({ id: m.userId, colorHue: m.colorHue }))
+    );
+
+    return (
+        <div
+            className="tiptap-content text-sm break-words"
+            dangerouslySetInnerHTML={{ __html: html }}
+        />
     );
 }

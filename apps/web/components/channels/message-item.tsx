@@ -6,42 +6,54 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import type { ComposerMember } from "@/components/channels/composer";
 import { LinkCard } from "@/components/channels/link-card";
 import { MessageAttachments } from "@/components/channels/message-attachments";
 import { MessageBody } from "@/components/channels/message-body";
 import { MessageToolbar, type MessageViewer } from "@/components/channels/message-toolbar";
 import { ReactionBar } from "@/components/channels/reaction-bar";
+import { RichTextEditor, type EditorState } from "@/components/channels/rich-text-editor";
 import { Timestamp } from "@/components/preferences/user-prefs";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { editMessage } from "@/lib/actions/messages";
+import { htmlToText, isHtmlBody, plainTextToHtml } from "@/lib/messaging/rich-text";
 import type { ChannelMessage, ThreadMessage } from "@/lib/queries/channels";
 import { Button } from "@workspace/ui/components/button";
-import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
 
 type ItemMessage = ChannelMessage | ThreadMessage;
 
 function InlineEditor({
     message,
+    members,
     onDone
 }: {
     message: ItemMessage;
+    members: ComposerMember[];
     onDone: () => void;
 }) {
     const router = useRouter();
-    const [body, setBody] = useState(message.body);
+    const initialHtml = isHtmlBody(message.body) ? message.body : plainTextToHtml(message.body);
+    const [editor, setEditor] = useState<EditorState>({
+        html: message.body,
+        isEmpty: htmlToText(message.body).length === 0,
+        mentionIds: []
+    });
     const [pending, setPending] = useState(false);
 
     async function save() {
-        const trimmed = body.trim();
-        if (!trimmed || pending) return;
+        if (editor.isEmpty || pending) return;
         setPending(true);
-        // Preserve existing mentions whose @Name is still present.
-        const mentionUserIds = message.mentions
-            .filter((m) => trimmed.includes(`@${m.name}`))
-            .map((m) => m.userId);
+        // Mentions from editor nodes, plus any legacy @Name still present as text.
+        const text = htmlToText(editor.html);
+        const mentionUserIds = [
+            ...new Set([
+                ...editor.mentionIds,
+                ...message.mentions.filter((m) => text.includes(`@${m.name}`)).map((m) => m.userId)
+            ])
+        ];
         try {
-            await editMessage({ messageId: message.id, body: trimmed, mentionUserIds });
+            await editMessage({ messageId: message.id, body: editor.html, mentionUserIds });
             onDone();
             router.refresh();
         } catch (err) {
@@ -52,21 +64,15 @@ function InlineEditor({
 
     return (
         <div className="mt-1 flex flex-col gap-2">
-            <Textarea
-                value={body}
+            <RichTextEditor
+                members={members}
                 autoFocus
-                onChange={(e) => setBody(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === "Escape") onDone();
-                    if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void save();
-                    }
-                }}
-                className="min-h-10"
+                initialHtml={initialHtml}
+                onChange={setEditor}
+                onSubmit={() => void save()}
             />
             <div className="flex gap-2">
-                <Button size="sm" onClick={() => void save()} disabled={pending}>
+                <Button size="sm" onClick={() => void save()} disabled={pending || editor.isEmpty}>
                     Save
                 </Button>
                 <Button size="sm" variant="ghost" onClick={onDone}>
@@ -80,10 +86,12 @@ function InlineEditor({
 export function MessageItem({
     message,
     viewer,
+    members = [],
     showReply = true
 }: {
     message: ItemMessage;
     viewer: MessageViewer;
+    members?: ComposerMember[];
     showReply?: boolean;
 }) {
     const [editing, setEditing] = useState(false);
@@ -113,7 +121,7 @@ export function MessageItem({
                 {deleted ? (
                     <p className="text-sm text-muted-foreground italic">This message was deleted.</p>
                 ) : editing ? (
-                    <InlineEditor message={message} onDone={() => setEditing(false)} />
+                    <InlineEditor message={message} members={members} onDone={() => setEditing(false)} />
                 ) : (
                     <>
                         {message.body && <MessageBody body={message.body} mentions={message.mentions} />}

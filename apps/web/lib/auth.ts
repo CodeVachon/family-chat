@@ -20,6 +20,9 @@ export const auth = betterAuth({
     appName: "Family Chat",
     baseURL: process.env.BETTER_AUTH_URL,
     secret: process.env.BETTER_AUTH_SECRET,
+    // baseURL's origin is always trusted; DEV_LAN_ORIGIN adds a LAN address so
+    // the dev server is reachable from other devices (e.g. a phone).
+    trustedOrigins: process.env.DEV_LAN_ORIGIN ? [process.env.DEV_LAN_ORIGIN] : undefined,
 
     database: drizzleAdapter(db, {
         provider: "pg",

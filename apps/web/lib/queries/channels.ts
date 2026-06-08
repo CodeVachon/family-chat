@@ -12,6 +12,7 @@ import {
     type MessageReaction
 } from "@workspace/db/schema";
 import { extractUrls } from "@/lib/messaging/links";
+import { htmlToText } from "@/lib/messaging/rich-text";
 import type { ChannelRole } from "@/lib/permissions";
 
 const authorWith = {
@@ -58,7 +59,7 @@ type RawMessageRow = Awaited<ReturnType<typeof queryMessages>>[number];
 
 /** Attach link previews, aggregated reactions, and mention summaries to messages. */
 async function decorateMessages(rows: RawMessageRow[], userId: string) {
-    const urls = [...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(r.body))))];
+    const urls = [...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(htmlToText(r.body)))))];
     const previewByUrl = new Map<string, typeof linkPreviews.$inferSelect>();
     if (urls.length > 0) {
         const previews = await db.query.linkPreviews.findMany({
@@ -80,7 +81,7 @@ async function decorateMessages(rows: RawMessageRow[], userId: string) {
         mentionsMe: r.mentions.some((m) => m.mentionedUserId === userId),
         linkPreviews: r.deletedAt
             ? []
-            : extractUrls(r.body)
+            : extractUrls(htmlToText(r.body))
                   .map((u) => previewByUrl.get(u))
                   .filter((p): p is NonNullable<typeof p> => Boolean(p))
     }));

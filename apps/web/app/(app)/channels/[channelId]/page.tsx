@@ -73,7 +73,7 @@ export default async function ChannelPage({
                 />
 
                 <MessageScroller bottomKey={`${latestMessageId}:${messages.length}`}>
-                    <MessageList messages={messages} viewer={viewer} />
+                    <MessageList messages={messages} viewer={viewer} members={composerMembers} />
                 </MessageScroller>
 
                 <TypingIndicator channelId={channel.id} />

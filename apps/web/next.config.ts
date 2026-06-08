@@ -1,3 +1,5 @@
+import os from "node:os";
+
 import { config } from "dotenv";
 import type { NextConfig } from "next";
 
@@ -5,8 +7,24 @@ import type { NextConfig } from "next";
 // auto-loads from the app dir, so load the root .env here (dev/build/start).
 config({ path: "../../.env" });
 
+// Allow cross-origin dev requests (HMR, server actions, /_next/*) from other
+// devices like a phone — via the LAN IP (DEV_LAN_ORIGIN) and every variant of
+// this machine's hostname a browser might send (bare name, `.local` Bonjour
+// name iOS uses, full hostname), all lowercased since hosts are case-insensitive.
+const fullHost = os.hostname().toLowerCase(); // e.g. "artimis.lan"
+const baseHost = fullHost.split(".")[0] ?? fullHost; // e.g. "artimis"
+const allowedDevOrigins = [
+    ...new Set([
+        ...(process.env.DEV_LAN_ORIGIN ? [new URL(process.env.DEV_LAN_ORIGIN).hostname] : []),
+        fullHost,
+        baseHost,
+        `${baseHost}.local`
+    ])
+];
+
 const nextConfig: NextConfig = {
     transpilePackages: ["@workspace/ui", "@workspace/db"],
+    allowedDevOrigins,
     // Keep server-only libs out of the bundler. Better-Auth ships optional
     // adapters (kysely) we don't use; bundling them trips static export checks.
     serverExternalPackages: [

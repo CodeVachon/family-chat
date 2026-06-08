@@ -8,6 +8,7 @@ import { attachments, channelMembers, mentions, messages } from "@workspace/db/s
 
 import { authorizeChannel } from "@/lib/dal";
 import { ensureMessageLinkPreviews } from "@/lib/messaging/link-preview";
+import { htmlToText, sanitizeMessageHtml } from "@/lib/messaging/rich-text";
 import { canInChannel } from "@/lib/permissions";
 import { pushForNewMessage } from "@/lib/push/notify";
 import { editMessageSchema, postMessageSchema } from "@/lib/validation/channel";
@@ -29,6 +30,12 @@ export async function postMessage(input: unknown) {
     const data = postMessageSchema.parse(input);
     const { user } = await authorizeChannel(data.channelId, "channel:post");
 
+    // Sanitize the rich-text HTML before it ever touches the DB.
+    const body = sanitizeMessageHtml(data.body.trim());
+    if (htmlToText(body).length === 0 && data.attachments.length === 0) {
+        throw new Error("Message cannot be empty");
+    }
+
     if (data.threadRootId) {
         const root = await db.query.messages.findFirst({
             where: eq(messages.id, data.threadRootId),
@@ -47,7 +54,7 @@ export async function postMessage(input: unknown) {
                 channelId: data.channelId,
                 authorUserId: user.id,
                 threadRootId: data.threadRootId ?? null,
-                body: data.body.trim()
+                body
             })
             .returning({ id: messages.id });
 
@@ -78,7 +85,7 @@ export async function postMessage(input: unknown) {
         return message!.id;
     });
 
-    void ensureMessageLinkPreviews(messageId, data.body);
+    void ensureMessageLinkPreviews(messageId, htmlToText(body));
     // Background push (mentions always; new messages for 'all'-level members).
     void pushForNewMessage({
         channelId: data.channelId,
@@ -101,12 +108,15 @@ export async function editMessage(input: unknown) {
         canInChannel(user, membership, channel, "message:edit_any");
     if (!canEdit) throw new Error("Not authorized");
 
+    const body = sanitizeMessageHtml(data.body.trim());
+    if (htmlToText(body).length === 0) throw new Error("Message cannot be empty");
+
     const mentionIds = await memberIdsIn(message.channelId, data.mentionUserIds);
 
     await db.transaction(async (tx) => {
         await tx
             .update(messages)
-            .set({ body: data.body.trim(), editedAt: new Date(), updatedAt: new Date() })
+            .set({ body, editedAt: new Date(), updatedAt: new Date() })
             .where(eq(messages.id, data.messageId));
         await tx.delete(mentions).where(eq(mentions.messageId, data.messageId));
         if (mentionIds.length > 0) {
@@ -116,7 +126,7 @@ export async function editMessage(input: unknown) {
         }
     });
 
-    void ensureMessageLinkPreviews(data.messageId, data.body);
+    void ensureMessageLinkPreviews(data.messageId, htmlToText(body));
     revalidatePath(`/channels/${message.channelId}`);
 }
 

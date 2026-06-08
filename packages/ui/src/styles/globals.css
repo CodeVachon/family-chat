@@ -137,3 +137,45 @@
     cursor: pointer;
     }
 }
+@layer components {
+  /* Shared styling for rich-text message content — used both in the Tiptap
+     editor and when rendering stored message HTML (`.tiptap-content`). */
+  .tiptap-content :where(p, ul, ol, blockquote, pre) {
+    margin: 0;
+  }
+  .tiptap-content :where(p, ul, ol, blockquote, pre) + :where(p, ul, ol, blockquote, pre) {
+    margin-top: 0.5rem;
+  }
+  .tiptap-content ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+  .tiptap-content ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+  }
+  .tiptap-content a {
+    @apply font-medium text-primary underline underline-offset-2;
+  }
+  .tiptap-content code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.85em];
+  }
+  .tiptap-content pre {
+    @apply overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[0.85em];
+  }
+  .tiptap-content pre code {
+    @apply bg-transparent p-0;
+  }
+  .tiptap-content blockquote {
+    @apply border-l-2 border-border pl-3 text-muted-foreground;
+  }
+  .tiptap-content .mention {
+    @apply rounded bg-primary/10 px-0.5 font-medium;
+  }
+
+  /* Placeholder shown in the empty editor. */
+  .tiptap-content p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none float-left h-0 text-muted-foreground;
+  }
+}
