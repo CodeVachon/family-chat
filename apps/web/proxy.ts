@@ -60,6 +60,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    // Run on everything except API routes, Next internals, and static assets.
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|ico|webp)$).*)"]
+    // Run on everything except API routes, Next internals, PWA assets (manifest,
+    // service worker, icon — must be publicly fetchable for install), and static files.
+    matcher: [
+        "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|jpeg|svg|gif|ico|webp)$).*)"
+    ]
 };

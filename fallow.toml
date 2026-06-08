@@ -1,5 +1,10 @@
 # Fallow audit configuration.
 #
+# The service worker is fetched at runtime by the browser (navigator.service
+# Worker.register), not via the import graph, so dead-code analysis can't see it.
+dynamicallyLoaded = ["apps/web/public/sw.js"]
+
+#
 # The CRAP score blends cyclomatic complexity with test coverage. With no
 # coverage data it degenerates to a pure complexity penalty (cc^2 + cc), and on
 # JSX-heavy components it over-counts (every `&&`/ternary in markup). Until the

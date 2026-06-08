@@ -15,7 +15,8 @@ const nextConfig: NextConfig = {
         "kysely",
         "postgres",
         "cloudinary",
-        "open-graph-scraper"
+        "open-graph-scraper",
+        "web-push"
     ],
     experimental: {
         // Enables forbidden()/unauthorized() + forbidden.tsx/unauthorized.tsx

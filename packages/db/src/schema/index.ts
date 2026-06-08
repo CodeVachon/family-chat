@@ -8,4 +8,5 @@ export * from "./link-previews";
 export * from "./reactions";
 export * from "./mentions";
 export * from "./app-settings";
+export * from "./push-subscriptions";
 export * from "./relations";

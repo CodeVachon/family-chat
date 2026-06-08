@@ -9,6 +9,7 @@ import { attachments, channelMembers, mentions, messages } from "@workspace/db/s
 import { authorizeChannel } from "@/lib/dal";
 import { ensureMessageLinkPreviews } from "@/lib/messaging/link-preview";
 import { canInChannel } from "@/lib/permissions";
+import { pushForNewMessage } from "@/lib/push/notify";
 import { editMessageSchema, postMessageSchema } from "@/lib/validation/channel";
 
 /** Filter the given user ids to those that are members of the channel. */
@@ -78,6 +79,12 @@ export async function postMessage(input: unknown) {
     });
 
     void ensureMessageLinkPreviews(messageId, data.body);
+    // Background push (mentions always; new messages for 'all'-level members).
+    void pushForNewMessage({
+        channelId: data.channelId,
+        authorUserId: user.id,
+        mentionedUserIds: mentionIds
+    });
     revalidatePath(`/channels/${data.channelId}`);
 }
 

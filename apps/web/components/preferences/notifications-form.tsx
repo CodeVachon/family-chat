@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { updateNotifications } from "@/lib/actions/preferences";
+import { subscribeToPush, unsubscribeFromPush } from "@/lib/push/subscribe-client";
 import { NOTIFICATION_LEVELS, type NotificationLevel } from "@/lib/validation/preferences";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
@@ -24,9 +25,12 @@ export function NotificationsForm({
     const router = useRouter();
     const [level, setLevel] = useState<NotificationLevel>(initial.notificationLevel);
     const [pending, setPending] = useState(false);
-    // Set once the user acts on desktop notifications (we don't read it on mount
-    // to keep this SSR-safe and avoid cascading effects).
-    const [permission, setPermission] = useState<NotificationPermission | "unsupported" | null>(null);
+    // Set once the user acts on push (we don't read it on mount to keep this
+    // SSR-safe and avoid cascading effects).
+    const [pushState, setPushState] = useState<"granted" | "denied" | "unsupported" | "error" | null>(
+        null
+    );
+    const [pushBusy, setPushBusy] = useState(false);
 
     async function save() {
         setPending(true);
@@ -41,15 +45,24 @@ export function NotificationsForm({
         }
     }
 
-    async function enableDesktop() {
-        if (typeof Notification === "undefined") {
-            toast.error("Your browser doesn't support notifications");
-            return;
-        }
-        const result = await Notification.requestPermission();
-        setPermission(result);
-        if (result === "granted") toast.success("Desktop notifications enabled");
-        else toast.error("Permission was not granted");
+    async function enablePush() {
+        setPushBusy(true);
+        const result = await subscribeToPush();
+        setPushState(result);
+        setPushBusy(false);
+        if (result === "granted") toast.success("Background notifications enabled on this device");
+        else if (result === "denied") toast.error("Permission was not granted");
+        else if (result === "unsupported")
+            toast.error("This browser doesn't support background notifications");
+        else toast.error("Couldn't enable notifications");
+    }
+
+    async function disablePush() {
+        setPushBusy(true);
+        await unsubscribeFromPush();
+        setPushState(null);
+        setPushBusy(false);
+        toast.success("Background notifications disabled on this device");
     }
 
     return (
@@ -67,23 +80,39 @@ export function NotificationsForm({
             </div>
 
             <div className="flex flex-col gap-2">
-                <Label>Desktop notifications</Label>
-                {permission === "granted" ? (
-                    <p className="text-sm text-muted-foreground">
-                        Desktop notifications are enabled for this browser.
-                    </p>
-                ) : permission === "unsupported" ? (
-                    <p className="text-sm text-muted-foreground">
-                        This browser doesn&apos;t support desktop notifications.
-                    </p>
+                <Label>Background notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                    Get notified on this device even when the app is closed.
+                </p>
+                {pushState === "granted" ? (
+                    <div className="flex flex-col items-start gap-1">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={pushBusy}
+                            onClick={() => void disablePush()}
+                        >
+                            Disable on this device
+                        </Button>
+                    </div>
                 ) : (
                     <div className="flex flex-col items-start gap-1">
-                        <Button type="button" variant="outline" onClick={enableDesktop}>
-                            Enable desktop notifications
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={pushBusy}
+                            onClick={() => void enablePush()}
+                        >
+                            {pushBusy ? "Enabling…" : "Enable on this device"}
                         </Button>
-                        {permission === "denied" && (
+                        {pushState === "denied" && (
                             <p className="text-xs text-muted-foreground">
                                 Blocked — re-enable notifications for this site in your browser settings.
+                            </p>
+                        )}
+                        {pushState === "unsupported" && (
+                            <p className="text-xs text-muted-foreground">
+                                On iPhone/iPad, first add this app to your Home Screen, then enable.
                             </p>
                         )}
                     </div>
