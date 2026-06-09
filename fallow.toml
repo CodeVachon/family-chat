@@ -1,8 +1,12 @@
 # Fallow audit configuration.
 #
-# The service worker is fetched at runtime by the browser (navigator.service
-# Worker.register), not via the import graph, so dead-code analysis can't see it.
-dynamicallyLoaded = ["apps/web/public/sw.js"]
+# Files loaded outside the import graph, so dead-code analysis can't see them:
+# - the service worker is fetched at runtime by the browser (navigator.serviceWorker.register)
+# - the Linear close-out script is run by Bun in a release GitHub Action, not imported
+dynamicallyLoaded = [
+    "apps/web/public/sw.js",
+    ".github/scripts/close-linear-issues.ts"
+]
 
 #
 # The CRAP score blends cyclomatic complexity with test coverage. With no

@@ -16,6 +16,21 @@ Audit defaults to `gate=new-only`: only findings introduced by the current chang
 
 ---
 
+## Issue tracking — Linear
+
+We use **Linear** as our issue tracker. Use the Linear MCP server (`linear-server`) for all issue work — do not invent a different tracker or store issues in the repo.
+
+- **Find the work**: look up issues by their identifier (e.g. `FAM-123`) when the user references one, or search/list issues to find what to do next.
+- **Before starting**: read the full issue (description, comments, acceptance criteria) and move it to *In Progress*.
+- **While working**: reference the issue identifier in branch names and commit messages (e.g. `FAM-123: ...`) so changes link back to Linear.
+- **Opening a PR**: title it `<ISSUE_KEY> - <ISSUE_TITLE>` (e.g. `FAM-123 - Add Docker container`). This is what the release-notes → Linear automation reads to move issues to *Done* on release, so the key must be in the title.
+- **When done**: leave a brief comment summarizing what changed and move the issue to the appropriate state (*In Review* on opening a PR, *Done* when merged).
+- **New work surfaced mid-task** (a bug, follow-up, or scope you won't finish now): create a Linear issue for it rather than leaving it untracked.
+
+If the Linear MCP isn't connected, ask the user to enable/authenticate it rather than falling back to another system.
+
+---
+
 ## Component tagging convention
 
 Every React component tags its **root rendered element** with a `data-component` attribute whose value is the component's **function name** (PascalCase). This makes components easy to locate in the DOM/devtools when applying design changes.

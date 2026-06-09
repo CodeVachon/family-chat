@@ -1,0 +1,43 @@
+name: Release — Close Linear Issues
+
+# When a release is published, pull the Linear issue identifiers out of the
+# release notes (GitHub's "Generate release notes" lists each merged PR's title,
+# which carries the issue number) and move those issues to a Done state.
+# Requires a LINEAR_API_KEY secret (a Linear personal API key).
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  close-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      - name: Collect Linear issue identifiers from release notes
+        id: collect
+        env:
+          # Passed via env (not inline ${{ }}) so the notes can't inject shell.
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          ids=$(printf '%s' "$NOTES" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | sort -u | tr '\n' ' ')
+          echo "Identifiers: ${ids:-<none>}"
+          echo "ids=$ids" >> "$GITHUB_OUTPUT"
+
+      - name: Mark issues Done in Linear
+        if: ${{ steps.collect.outputs.ids != '' }}
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_IDS: ${{ steps.collect.outputs.ids }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: bun .github/scripts/close-linear-issues.ts
