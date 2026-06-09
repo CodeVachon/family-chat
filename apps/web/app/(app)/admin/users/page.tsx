@@ -34,10 +34,7 @@ export default async function UsersPage() {
     });
 
     return (
-        <div
-            data-component="UsersPage"
-            className="flex flex-col gap-3"
-        >
+        <div data-component="UsersPage" className="flex flex-col gap-3">
             <InviteUserForm />
 
             {users.map((u) => {
@@ -60,7 +57,9 @@ export default async function UsersPage() {
                                             {u.approvalStatus}
                                         </Badge>
                                     </div>
-                                    <p className="truncate text-sm text-muted-foreground">{u.email}</p>
+                                    <p className="truncate text-sm text-muted-foreground">
+                                        {u.email}
+                                    </p>
                                 </div>
                             </div>
 

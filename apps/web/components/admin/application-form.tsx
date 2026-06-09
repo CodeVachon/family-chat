@@ -12,7 +12,11 @@ import { avatarUrl as squareCrop } from "@/lib/cloudinary/url";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
 
-export function ApplicationForm({ initial }: { initial: { name: string; iconUrl: string | null } }) {
+export function ApplicationForm({
+    initial
+}: {
+    initial: { name: string; iconUrl: string | null };
+}) {
     const router = useRouter();
     const [name, setName] = useState(initial.name);
     const [iconUrl, setIconUrl] = useState(initial.iconUrl);
@@ -33,10 +37,7 @@ export function ApplicationForm({ initial }: { initial: { name: string; iconUrl:
     }
 
     return (
-        <div
-            data-component="ApplicationForm"
-            className="flex max-w-md flex-col gap-6"
-        >
+        <div data-component="ApplicationForm" className="flex max-w-md flex-col gap-6">
             <div className="flex flex-col gap-2">
                 <Label>Icon</Label>
                 <ImageUploadField

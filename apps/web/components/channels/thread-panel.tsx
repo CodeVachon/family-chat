@@ -48,7 +48,9 @@ export async function ThreadPanel({
                 </div>
             ) : (
                 <>
-                    <MessageScroller bottomKey={`${messages[messages.length - 1]?.id}:${messages.length}`}>
+                    <MessageScroller
+                        bottomKey={`${messages[messages.length - 1]?.id}:${messages.length}`}
+                    >
                         <div className="py-4">
                             {messages.map((m) => (
                                 <MessageItem

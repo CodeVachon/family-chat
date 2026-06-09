@@ -105,7 +105,12 @@ function ArchiveButton({
     }
 
     return (
-        <Button type="button" variant="outline" disabled={disabled || pending} onClick={handleArchive}>
+        <Button
+            type="button"
+            variant="outline"
+            disabled={disabled || pending}
+            onClick={handleArchive}
+        >
             {pending ? "Working…" : isArchived ? "Unarchive channel" : "Archive channel"}
         </Button>
     );

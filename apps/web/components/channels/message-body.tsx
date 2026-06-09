@@ -11,7 +11,11 @@ function escapeRegex(value: string): string {
 function PlainTextBody({ body, mentions }: { body: string; mentions: MentionSummary[] }) {
     const base = "text-sm break-words whitespace-pre-wrap";
     if (mentions.length === 0) {
-        return <p data-component="PlainTextBody" className={base}>{body}</p>;
+        return (
+            <p data-component="PlainTextBody" className={base}>
+                {body}
+            </p>
+        );
     }
 
     const byName = new Map(mentions.map((m) => [m.name, m]));

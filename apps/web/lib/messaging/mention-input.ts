@@ -18,5 +18,8 @@ export function applyMention(
     name: string
 ): { text: string; caret: number } {
     const insert = `@${name} `;
-    return { text: text.slice(0, start) + insert + text.slice(caret), caret: start + insert.length };
+    return {
+        text: text.slice(0, start) + insert + text.slice(caret),
+        caret: start + insert.length
+    };
 }

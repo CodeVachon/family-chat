@@ -33,7 +33,9 @@ export function ComposerAttachment({
             ) : (
                 <div className="flex size-full flex-col items-center justify-center gap-1 p-1 text-center">
                     <FileText className="size-5 text-muted-foreground" />
-                    <span className="line-clamp-1 text-[10px] text-muted-foreground">{item.name}</span>
+                    <span className="line-clamp-1 text-[10px] text-muted-foreground">
+                        {item.name}
+                    </span>
                 </div>
             )}
 

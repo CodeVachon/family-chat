@@ -25,10 +25,7 @@ export default async function ApprovalsPage() {
     }
 
     return (
-        <div
-            data-component="ApprovalsPage"
-            className="flex flex-col gap-3"
-        >
+        <div data-component="ApprovalsPage" className="flex flex-col gap-3">
             {pending.map((u) => (
                 <Card key={u.id}>
                     <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">

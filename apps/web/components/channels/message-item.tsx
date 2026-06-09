@@ -109,7 +109,8 @@ export function MessageItem({
         if (inThread || editing || deleted) return;
         if (!window.matchMedia("(hover: none)").matches) return;
         const target = e.target as HTMLElement;
-        if (target.closest("a, button, [role='button'], input, textarea, [contenteditable='true']")) return;
+        if (target.closest("a, button, [role='button'], input, textarea, [contenteditable='true']"))
+            return;
         router.push(`?thread=${message.id}`);
     }
 
@@ -122,7 +123,12 @@ export function MessageItem({
                 message.mentionsMe && !deleted && "bg-amber-400/10"
             )}
         >
-            <UserAvatar name={name} colorHue={hue} avatarUrl={prefs?.avatarUrl} className="mt-0.5 size-9" />
+            <UserAvatar
+                name={name}
+                colorHue={hue}
+                avatarUrl={prefs?.avatarUrl}
+                className="mt-0.5 size-9"
+            />
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                     <UserName name={name} colorHue={hue} className="text-sm" />
@@ -133,12 +139,20 @@ export function MessageItem({
                 </div>
 
                 {deleted ? (
-                    <p className="text-sm text-muted-foreground italic">This message was deleted.</p>
+                    <p className="text-sm text-muted-foreground italic">
+                        This message was deleted.
+                    </p>
                 ) : editing ? (
-                    <InlineEditor message={message} members={members} onDone={() => setEditing(false)} />
+                    <InlineEditor
+                        message={message}
+                        members={members}
+                        onDone={() => setEditing(false)}
+                    />
                 ) : (
                     <>
-                        {message.body && <MessageBody body={message.body} mentions={message.mentions} />}
+                        {message.body && (
+                            <MessageBody body={message.body} mentions={message.mentions} />
+                        )}
                         <MessageAttachments attachments={message.attachments} />
                         {message.linkPreviews.map((preview) => (
                             <LinkCard key={preview.id} preview={preview} />

@@ -59,7 +59,9 @@ type RawMessageRow = Awaited<ReturnType<typeof queryMessages>>[number];
 
 /** Attach link previews, aggregated reactions, and mention summaries to messages. */
 async function decorateMessages(rows: RawMessageRow[], userId: string) {
-    const urls = [...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(htmlToText(r.body)))))];
+    const urls = [
+        ...new Set(rows.flatMap((r) => (r.deletedAt ? [] : extractUrls(htmlToText(r.body)))))
+    ];
     const previewByUrl = new Map<string, typeof linkPreviews.$inferSelect>();
     if (urls.length > 0) {
         const previews = await db.query.linkPreviews.findMany({
@@ -175,7 +177,9 @@ export type ChannelMessage = Awaited<ReturnType<typeof listChannelMessages>>[num
 
 /** A thread: the root message followed by its replies, chronologically. */
 export async function listThreadMessages(rootId: string, userId: string) {
-    const rows = await queryMessages(or(eq(messages.id, rootId), eq(messages.threadRootId, rootId)));
+    const rows = await queryMessages(
+        or(eq(messages.id, rootId), eq(messages.threadRootId, rootId))
+    );
     return decorateMessages(rows, userId);
 }
 

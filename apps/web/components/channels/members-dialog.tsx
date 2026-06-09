@@ -140,7 +140,11 @@ export function MembersDialog({
                             <option value="user">User</option>
                             <option value="viewer">Viewer</option>
                         </select>
-                        <Button size="sm" disabled={!addUserId || busy} onClick={() => void addMember()}>
+                        <Button
+                            size="sm"
+                            disabled={!addUserId || busy}
+                            onClick={() => void addMember()}
+                        >
                             Add
                         </Button>
                     </div>
@@ -152,7 +156,10 @@ export function MembersDialog({
                         const editable = canManage && !isOwner;
                         const online = onlineUserIds.has(m.userId);
                         return (
-                            <div key={m.userId} className="flex items-center gap-2 rounded-lg p-1.5">
+                            <div
+                                key={m.userId}
+                                className="flex items-center gap-2 rounded-lg p-1.5"
+                            >
                                 <div className="relative">
                                     <UserAvatar
                                         name={m.name}
@@ -167,7 +174,11 @@ export function MembersDialog({
                                         />
                                     )}
                                 </div>
-                                <UserName name={m.name} colorHue={m.colorHue} className="flex-1 truncate text-sm" />
+                                <UserName
+                                    name={m.name}
+                                    colorHue={m.colorHue}
+                                    className="flex-1 truncate text-sm"
+                                />
                                 {editable ? (
                                     <select
                                         defaultValue={m.role}
@@ -179,7 +190,9 @@ export function MembersDialog({
                                         <option value="viewer">Viewer</option>
                                     </select>
                                 ) : (
-                                    <span className="text-xs text-muted-foreground capitalize">{m.role}</span>
+                                    <span className="text-xs text-muted-foreground capitalize">
+                                        {m.role}
+                                    </span>
                                 )}
                                 {editable && (
                                     <Button

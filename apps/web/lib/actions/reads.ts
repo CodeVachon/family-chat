@@ -28,7 +28,5 @@ export async function markChannelRead(channelId: string) {
             lastReadMessageId: latest?.id ?? null,
             updatedAt: new Date()
         })
-        .where(
-            and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, user.id))
-        );
+        .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, user.id)));
 }

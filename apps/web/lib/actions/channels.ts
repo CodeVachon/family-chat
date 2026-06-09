@@ -131,10 +131,7 @@ export async function leaveChannel(formData: FormData) {
     const channelId = requireChannelId(formData);
 
     const membership = await db.query.channelMembers.findFirst({
-        where: and(
-            eq(channelMembers.channelId, channelId),
-            eq(channelMembers.userId, actor.id)
-        )
+        where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id))
     });
     if (membership?.role === "owner") {
         throw new Error("The channel owner cannot leave; transfer ownership or delete it");
@@ -142,9 +139,7 @@ export async function leaveChannel(formData: FormData) {
 
     await db
         .delete(channelMembers)
-        .where(
-            and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id))
-        );
+        .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id)));
 
     revalidatePath("/channels");
     revalidatePath(`/channels/${channelId}`);

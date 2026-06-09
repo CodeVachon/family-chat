@@ -4,7 +4,13 @@ import { useEffect } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 
-export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function AppError({
+    error,
+    reset
+}: {
+    error: Error & { digest?: string };
+    reset: () => void;
+}) {
     useEffect(() => {
         console.error("[app error]", error);
     }, [error]);

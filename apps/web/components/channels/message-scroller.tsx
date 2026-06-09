@@ -45,7 +45,11 @@ export function MessageScroller({
             data-component="MessageScroller"
             ref={ref}
             onScroll={handleScroll}
-            style={accentColor ? ({ "--scrollbar-accent": accentColor } as React.CSSProperties) : undefined}
+            style={
+                accentColor
+                    ? ({ "--scrollbar-accent": accentColor } as React.CSSProperties)
+                    : undefined
+            }
             className={cn(
                 "min-h-0 flex-1 overflow-y-auto",
                 accentColor && "channel-scrollbar",

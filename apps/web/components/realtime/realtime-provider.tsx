@@ -95,7 +95,9 @@ export function RealtimeProvider({
             if (event.type === "mention") {
                 notify(
                     "New mention",
-                    event.channelName ? `You were mentioned in #${event.channelName}` : "You were mentioned",
+                    event.channelName
+                        ? `You were mentioned in #${event.channelName}`
+                        : "You were mentioned",
                     event.channelId
                 );
             } else if (

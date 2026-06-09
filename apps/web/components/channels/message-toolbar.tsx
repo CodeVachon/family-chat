@@ -76,7 +76,10 @@ export function MessageToolbar({
         "flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground";
 
     return (
-        <div data-component="MessageToolbar" className="absolute -top-3 right-3 flex items-center gap-1">
+        <div
+            data-component="MessageToolbar"
+            className="absolute -top-3 right-3 flex items-center gap-1"
+        >
             {/* Pointer devices: floating bar revealed on hover. */}
             <div
                 className={cn(
@@ -110,7 +113,11 @@ export function MessageToolbar({
                     </Popover>
                 )}
                 {showReply && (
-                    <Link href={`?thread=${messageId}`} className={btn} aria-label="Reply in thread">
+                    <Link
+                        href={`?thread=${messageId}`}
+                        className={btn}
+                        aria-label="Reply in thread"
+                    >
                         <MessageSquare className="size-4" />
                     </Link>
                 )}
@@ -171,7 +178,10 @@ export function MessageToolbar({
                             </DropdownMenuItem>
                         )}
                         {canDelete && (
-                            <DropdownMenuItem variant="destructive" onClick={() => setConfirmOpen(true)}>
+                            <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setConfirmOpen(true)}
+                            >
                                 <Trash2 className="size-4" />
                                 Delete
                             </DropdownMenuItem>

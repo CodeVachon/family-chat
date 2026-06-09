@@ -74,7 +74,10 @@ export function AppearanceForm({
 
             <div className="flex flex-col gap-3">
                 <Label>Date &amp; time format</Label>
-                <RadioGroup value={format} onValueChange={(v) => setFormat(String(v) as DateTimeFormat)}>
+                <RadioGroup
+                    value={format}
+                    onValueChange={(v) => setFormat(String(v) as DateTimeFormat)}
+                >
                     {DATE_TIME_FORMATS.map((o) => (
                         <label key={o} className="flex cursor-pointer items-center gap-2 text-sm">
                             <RadioGroupItem value={o} />

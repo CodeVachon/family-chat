@@ -55,10 +55,7 @@ export const requireApprovedUser = cache(async (): Promise<AppUser> => {
 export const getChannelMembership = cache(
     async (channelId: string, userId: string): Promise<ChannelMember | null> => {
         const membership = await db.query.channelMembers.findFirst({
-            where: and(
-                eq(channelMembers.channelId, channelId),
-                eq(channelMembers.userId, userId)
-            )
+            where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId))
         });
         return membership ?? null;
     }

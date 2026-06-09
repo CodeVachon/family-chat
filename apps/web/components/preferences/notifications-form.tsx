@@ -27,9 +27,9 @@ export function NotificationsForm({
     const [pending, setPending] = useState(false);
     // Set once the user acts on push (we don't read it on mount to keep this
     // SSR-safe and avoid cascading effects).
-    const [pushState, setPushState] = useState<"granted" | "denied" | "unsupported" | "error" | null>(
-        null
-    );
+    const [pushState, setPushState] = useState<
+        "granted" | "denied" | "unsupported" | "error" | null
+    >(null);
     const [pushBusy, setPushBusy] = useState(false);
 
     async function save() {
@@ -69,7 +69,10 @@ export function NotificationsForm({
         <div data-component="NotificationsForm" className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
                 <Label>Notify me about</Label>
-                <RadioGroup value={level} onValueChange={(v) => setLevel(String(v) as NotificationLevel)}>
+                <RadioGroup
+                    value={level}
+                    onValueChange={(v) => setLevel(String(v) as NotificationLevel)}
+                >
                     {NOTIFICATION_LEVELS.map((l) => (
                         <label key={l} className="flex cursor-pointer items-center gap-2 text-sm">
                             <RadioGroupItem value={l} />
@@ -107,7 +110,8 @@ export function NotificationsForm({
                         </Button>
                         {pushState === "denied" && (
                             <p className="text-xs text-muted-foreground">
-                                Blocked — re-enable notifications for this site in your browser settings.
+                                Blocked — re-enable notifications for this site in your browser
+                                settings.
                             </p>
                         )}
                         {pushState === "unsupported" && (

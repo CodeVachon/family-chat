@@ -34,7 +34,10 @@ export function InviteUserForm() {
     return (
         <Card className="mb-4">
             <CardContent className="py-4">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <form
+                    onSubmit={handleSubmit}
+                    className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                >
                     <div className="flex-1">
                         <TextField
                             id="inviteName"

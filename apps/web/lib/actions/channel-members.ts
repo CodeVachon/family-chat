@@ -33,10 +33,7 @@ export async function addChannelMember(formData: FormData) {
     const userId = requireField(formData, "userId");
     const role = channelMemberRoleSchema.parse(formData.get("role") ?? "user");
 
-    await db
-        .insert(channelMembers)
-        .values({ channelId, userId, role })
-        .onConflictDoNothing();
+    await db.insert(channelMembers).values({ channelId, userId, role }).onConflictDoNothing();
 
     revalidatePath(`/channels/${channelId}`);
 }

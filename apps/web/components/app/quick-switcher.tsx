@@ -36,7 +36,12 @@ export function QuickSwitcher({ channels }: { channels: SidebarChannel[] }) {
     }
 
     return (
-        <CommandDialog open={open} onOpenChange={setOpen} title="Switch channel" description="Jump to a channel">
+        <CommandDialog
+            open={open}
+            onOpenChange={setOpen}
+            title="Switch channel"
+            description="Jump to a channel"
+        >
             <Command>
                 <CommandInput placeholder="Jump to a channel…" />
                 <CommandList>

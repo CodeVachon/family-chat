@@ -6,12 +6,7 @@ import { useState } from "react";
 import { PdfPageViewer } from "@/components/channels/pdf-page-viewer";
 import { pdfThumbUrl } from "@/lib/cloudinary/url";
 import { formatBytes } from "@/lib/format";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle
-} from "@workspace/ui/components/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 
 export type PdfAttachmentData = {
     id: string;

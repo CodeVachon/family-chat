@@ -44,7 +44,10 @@ export function PdfPageViewer({ secureUrl }: { secureUrl: string }) {
     }
 
     return (
-        <div data-component="PdfPageViewer" className="flex flex-col items-center gap-3 bg-muted/40 p-3">
+        <div
+            data-component="PdfPageViewer"
+            className="flex flex-col items-center gap-3 bg-muted/40 p-3"
+        >
             {Array.from({ length: count }, (_, i) => i + 1).map((page) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

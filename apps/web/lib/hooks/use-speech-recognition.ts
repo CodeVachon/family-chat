@@ -63,7 +63,8 @@ export function useSpeechRecognition({
         if (!Ctor || recognitionRef.current) return;
 
         const recognition = new Ctor();
-        recognition.lang = lang ?? (typeof navigator !== "undefined" ? navigator.language : "en-US");
+        recognition.lang =
+            lang ?? (typeof navigator !== "undefined" ? navigator.language : "en-US");
         recognition.continuous = true;
         recognition.interimResults = false;
 

@@ -39,11 +39,7 @@ export function SignupForm() {
     }
 
     return (
-        <form
-            data-component="SignupForm"
-            onSubmit={handleSignup}
-            className="flex flex-col gap-4"
-        >
+        <form data-component="SignupForm" onSubmit={handleSignup} className="flex flex-col gap-4">
             <TextField
                 id="name"
                 label="Name"

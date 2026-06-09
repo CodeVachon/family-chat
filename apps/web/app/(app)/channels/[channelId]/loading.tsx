@@ -2,10 +2,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 
 export default function ChannelLoading() {
     return (
-        <div
-            data-component="ChannelLoading"
-            className="flex h-full min-h-0 flex-col"
-        >
+        <div data-component="ChannelLoading" className="flex h-full min-h-0 flex-col">
             <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <Skeleton className="size-5 rounded" />
                 <Skeleton className="h-4 w-40" />

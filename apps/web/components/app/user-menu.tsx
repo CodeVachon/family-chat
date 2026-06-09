@@ -40,7 +40,11 @@ export function UserMenu({
             <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted">
                 <UserAvatar name={user.name} colorHue={user.colorHue} avatarUrl={user.avatarUrl} />
                 <div className="min-w-0 flex-1">
-                    <UserName name={user.name} colorHue={user.colorHue} className="block truncate text-sm" />
+                    <UserName
+                        name={user.name}
+                        colorHue={user.colorHue}
+                        className="block truncate text-sm"
+                    />
                     <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />

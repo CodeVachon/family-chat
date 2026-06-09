@@ -37,8 +37,12 @@ export function ChannelHeader({
             <ChannelIcon icon={channel.icon} color={channel.color} className="size-5 shrink-0" />
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                    <h1 className="truncate font-heading text-base font-semibold">{channel.name}</h1>
-                    {channel.isPrivate && <Lock className="size-3.5 shrink-0 text-muted-foreground" />}
+                    <h1 className="truncate font-heading text-base font-semibold">
+                        {channel.name}
+                    </h1>
+                    {channel.isPrivate && (
+                        <Lock className="size-3.5 shrink-0 text-muted-foreground" />
+                    )}
                     {channel.isArchived && (
                         <Badge variant="outline" className="shrink-0">
                             Archived

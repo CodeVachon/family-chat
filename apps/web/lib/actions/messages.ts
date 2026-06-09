@@ -79,7 +79,9 @@ export async function postMessage(input: unknown) {
         if (mentionIds.length > 0) {
             await tx
                 .insert(mentions)
-                .values(mentionIds.map((uid) => ({ messageId: message!.id, mentionedUserId: uid })));
+                .values(
+                    mentionIds.map((uid) => ({ messageId: message!.id, mentionedUserId: uid }))
+                );
         }
 
         return message!.id;
@@ -122,7 +124,9 @@ export async function editMessage(input: unknown) {
         if (mentionIds.length > 0) {
             await tx
                 .insert(mentions)
-                .values(mentionIds.map((uid) => ({ messageId: data.messageId, mentionedUserId: uid })));
+                .values(
+                    mentionIds.map((uid) => ({ messageId: data.messageId, mentionedUserId: uid }))
+                );
         }
     });
 

@@ -19,12 +19,7 @@ export function ImageGallery({ images }: { images: GalleryImage[] }) {
 
     return (
         <>
-            <div
-                className={cn(
-                    "mt-1 grid max-w-md gap-1",
-                    single ? "grid-cols-1" : "grid-cols-2"
-                )}
-            >
+            <div className={cn("mt-1 grid max-w-md gap-1", single ? "grid-cols-1" : "grid-cols-2")}>
                 {visible.map((img, i) => {
                     const isLastVisible = i === visible.length - 1;
                     return (

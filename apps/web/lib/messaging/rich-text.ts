@@ -63,7 +63,9 @@ export function htmlToText(body: string): string {
         .replace(/<\/(p|div|li|blockquote|pre)>/gi, "\n")
         .replace(/<br\s*\/?>/gi, "\n");
     const stripped = withBreaks.replace(/<[^>]+>/g, "");
-    return decodeEntities(stripped).replace(/\n{3,}/g, "\n\n").trim();
+    return decodeEntities(stripped)
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
 }
 
 function decodeEntities(text: string): string {

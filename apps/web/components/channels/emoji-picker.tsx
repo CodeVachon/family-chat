@@ -42,7 +42,7 @@ export function EmojiPicker({
                             No emoji found.
                         </Frimousse.Empty>
                         <Frimousse.List
-                            className="select-none pb-1.5"
+                            className="pb-1.5 select-none"
                             components={{
                                 CategoryHeader: ({ category, ...props }) => (
                                     <div

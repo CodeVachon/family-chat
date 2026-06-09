@@ -46,7 +46,7 @@ export function ReactionBar({
                     )}
                 >
                     <span>{r.emoji}</span>
-                    <span className="tabular-nums text-muted-foreground">{r.count}</span>
+                    <span className="text-muted-foreground tabular-nums">{r.count}</span>
                 </button>
             ))}
         </div>

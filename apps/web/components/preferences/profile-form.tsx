@@ -49,7 +49,12 @@ function Preview({
 export function ProfileForm({
     initial
 }: {
-    initial: { displayName: string; colorHue: number; avatarUrl: string | null; fallbackName: string };
+    initial: {
+        displayName: string;
+        colorHue: number;
+        avatarUrl: string | null;
+        fallbackName: string;
+    };
 }) {
     const router = useRouter();
     const [displayName, setDisplayName] = useState(initial.displayName);
@@ -63,7 +68,11 @@ export function ProfileForm({
     async function save() {
         setPending(true);
         try {
-            await updateProfile({ displayName: displayName.trim() || null, colorHue, avatarUrl: avatar });
+            await updateProfile({
+                displayName: displayName.trim() || null,
+                colorHue,
+                avatarUrl: avatar
+            });
             toast.success("Profile updated");
             router.refresh();
         } catch (err) {
@@ -82,7 +91,12 @@ export function ProfileForm({
                 uploadLabel="Upload avatar"
                 onUploadingChange={setUploading}
                 renderPreview={(url) => (
-                    <UserAvatar name={previewName} colorHue={colorHue} avatarUrl={url} className="size-16" />
+                    <UserAvatar
+                        name={previewName}
+                        colorHue={colorHue}
+                        avatarUrl={url}
+                        className="size-16"
+                    />
                 )}
             />
 

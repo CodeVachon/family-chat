@@ -37,16 +37,19 @@ export function UserPrefsProvider({
         return () => clearInterval(id);
     }, []);
 
-    return (
-        <PrefsContext.Provider value={{ ...prefs, nowTick }}>{children}</PrefsContext.Provider>
-    );
+    return <PrefsContext.Provider value={{ ...prefs, nowTick }}>{children}</PrefsContext.Provider>;
 }
 
 /** A timestamp rendered in the viewer's preferred date/time format. */
 export function Timestamp({ date, className }: { date: Date; className?: string }) {
     const { dateTimeFormat, nowTick } = useUserPrefs();
     return (
-        <span data-component="Timestamp" suppressHydrationWarning className={className} title={date.toLocaleString()}>
+        <span
+            data-component="Timestamp"
+            suppressHydrationWarning
+            className={className}
+            title={date.toLocaleString()}
+        >
             {formatTimestamp(date, dateTimeFormat, new Date(nowTick))}
         </span>
     );
