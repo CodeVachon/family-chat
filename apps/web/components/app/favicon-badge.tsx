@@ -44,7 +44,13 @@ function drawBadged(base: HTMLImageElement | null, count: number): string {
     ctx.textBaseline = "middle";
     ctx.fillText(count > 9 ? "9+" : String(count), cx, cy + 1);
 
-    return canvas.toDataURL("image/png");
+    try {
+        return canvas.toDataURL("image/png");
+    } catch {
+        // A cross-origin base image without CORS taints the canvas; signal the
+        // caller to fall back to a generated badge that doesn't draw the base.
+        return "";
+    }
 }
 
 /**
@@ -62,7 +68,7 @@ export function FaviconBadge({ count }: { count: number }) {
     useEffect(() => {
         const link = iconLink();
         if (originalHref.current === null) {
-            originalHref.current = link.getAttribute("href") || "/favicon.ico";
+            originalHref.current = link.getAttribute("href") || "/icon.svg";
         }
         const original = originalHref.current;
 
@@ -72,8 +78,11 @@ export function FaviconBadge({ count }: { count: number }) {
         }
 
         const img = new Image();
+        // The base icon may be a cross-origin (Cloudinary) URL; request it with
+        // CORS so drawing it onto the canvas doesn't taint the export.
+        img.crossOrigin = "anonymous";
         img.onload = () => {
-            link.href = drawBadged(img, count);
+            link.href = drawBadged(img, count) || drawBadged(null, count);
         };
         img.onerror = () => {
             link.href = drawBadged(null, count);
