@@ -56,6 +56,17 @@ ENV NODE_ENV=production
 # in this builder stage — the real URL is supplied at runtime via --env-file.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 
+# Sentry (all optional). NEXT_PUBLIC_SENTRY_DSN is inlined into the client
+# bundle, so it must be present at build time to enable browser error reporting;
+# leaving it empty ships a Sentry-free client. SENTRY_ORG/PROJECT enable
+# source-map upload. The build no-ops Sentry when these are unset.
+ARG NEXT_PUBLIC_SENTRY_DSN=""
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
+ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+ENV SENTRY_ORG=${SENTRY_ORG}
+ENV SENTRY_PROJECT=${SENTRY_PROJECT}
+
 # Bun installs binaries per-workspace (e.g. apps/web/node_modules/.bin/next),
 # not all hoisted to root — so carry over every node_modules tree from deps,
 # then overlay the source (node_modules is .dockerignore'd, so it's preserved).
@@ -66,8 +77,13 @@ COPY . .
 # npm script would run next under Bun (see the jsdom note above); invoking the
 # next binary with Node sidesteps that. Workspace packages are consumed as
 # source via transpilePackages, so they need no separate build step.
+#
+# SENTRY_AUTH_TOKEN (for source-map upload) is passed as a build secret so it
+# never lands in an image layer; source-map upload is skipped when it's absent:
+#   docker build --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN ...
 WORKDIR /app/apps/web
-RUN node node_modules/next/dist/bin/next build
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN,required=false \
+    node node_modules/next/dist/bin/next build
 
 # ── runner: minimal Node image that runs the standalone server ─────────────
 FROM node:${NODE_VERSION}-slim AS runner

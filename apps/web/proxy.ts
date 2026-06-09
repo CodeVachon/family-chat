@@ -60,9 +60,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    // Run on everything except API routes, Next internals, PWA assets (manifest,
+    // Run on everything except API routes, the Sentry tunnel (/monitoring — must
+    // not be redirected through auth), Next internals, PWA assets (manifest,
     // service worker, icon — must be publicly fetchable for install), and static files.
     matcher: [
-        "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|jpeg|svg|gif|ico|webp)$).*)"
+        "/((?!api|monitoring|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|jpeg|svg|gif|ico|webp)$).*)"
     ]
 };

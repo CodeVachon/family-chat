@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 
+import { withSentryConfig } from "@sentry/nextjs";
 import { config } from "dotenv";
 import type { NextConfig } from "next";
 
@@ -61,4 +62,30 @@ const nextConfig: NextConfig = {
     }
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+    // org/project drive source-map upload. Read from the environment so the
+    // repo carries no hardcoded account details; when unset (or without a
+    // SENTRY_AUTH_TOKEN) the upload step simply no-ops.
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+
+    // Only print source-map upload logs in CI.
+    silent: !process.env.CI,
+
+    // Upload a wider set of source maps for nicer stack traces.
+    widenClientFileUpload: true,
+
+    // Proxy browser->Sentry requests through this route to dodge ad-blockers.
+    // NOTE: kept out of the proxy middleware matcher (see proxy.ts) so the
+    // tunnel isn't redirected through auth.
+    tunnelRoute: "/monitoring",
+
+    webpack: {
+        // Auto-instrument Vercel Cron Monitors (no-op off Vercel).
+        automaticVercelMonitors: true,
+        treeshake: {
+            // Drop Sentry's own debug logging from the bundle.
+            removeDebugLogging: true
+        }
+    }
+});

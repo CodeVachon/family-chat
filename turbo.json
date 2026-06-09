@@ -14,7 +14,13 @@
     "VAPID_PUBLIC_KEY",
     "VAPID_PRIVATE_KEY",
     "VAPID_SUBJECT",
-    "DEV_LAN_ORIGIN"
+    "DEV_LAN_ORIGIN",
+    "NEXT_PUBLIC_SENTRY_DSN",
+    "SENTRY_DSN",
+    "SENTRY_ORG",
+    "SENTRY_PROJECT",
+    "SENTRY_AUTH_TOKEN",
+    "CI"
   ],
   "tasks": {
     "build": {
