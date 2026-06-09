@@ -2,6 +2,10 @@
   "mcpServers": {
     "fallow": {
       "command": "fallow-mcp"
+    },
+    "next-devtools": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"]
     }
   }
 }
