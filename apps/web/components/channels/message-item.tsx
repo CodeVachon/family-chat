@@ -94,15 +94,28 @@ export function MessageItem({
     members?: ComposerMember[];
     showReply?: boolean;
 }) {
+    const router = useRouter();
     const [editing, setEditing] = useState(false);
     const prefs = message.author.preferences;
     const name = prefs?.displayName ?? message.author.name;
     const hue = prefs?.colorHue ?? 220;
     const deleted = Boolean(message.deletedAt);
     const replyCount = "replyCount" in message ? message.replyCount : 0;
+    // In the channel list (not a thread), a tap on touch devices opens the
+    // message's thread — the thread view is where the actions menu lives.
+    const inThread = !showReply;
+
+    function handleTouchTap(e: React.MouseEvent) {
+        if (inThread || editing || deleted) return;
+        if (!window.matchMedia("(hover: none)").matches) return;
+        const target = e.target as HTMLElement;
+        if (target.closest("a, button, [role='button'], input, textarea, [contenteditable='true']")) return;
+        router.push(`?thread=${message.id}`);
+    }
 
     return (
         <div
+            onClick={handleTouchTap}
             className={cn(
                 "group relative flex gap-3 px-4 py-1.5 hover:bg-muted/30",
                 message.mentionsMe && !deleted && "bg-amber-400/10"
@@ -153,6 +166,7 @@ export function MessageItem({
                     authorUserId={message.authorUserId}
                     viewer={viewer}
                     showReply={showReply}
+                    showTouchMenu={inThread}
                     onStartEdit={() => setEditing(true)}
                 />
             )}
