@@ -1,4 +1,5 @@
 import os from "node:os";
+import path from "node:path";
 
 import { config } from "dotenv";
 import type { NextConfig } from "next";
@@ -23,6 +24,12 @@ const allowedDevOrigins = [
 ];
 
 const nextConfig: NextConfig = {
+    // Self-contained server build for Docker: traces just the files the server
+    // needs into .next/standalone, so the runtime image carries no full
+    // node_modules. The tracing root spans the whole monorepo so workspace
+    // packages (@workspace/*) are included.
+    output: "standalone",
+    outputFileTracingRoot: path.join(__dirname, "../../"),
     transpilePackages: ["@workspace/ui", "@workspace/db"],
     allowedDevOrigins,
     // Keep server-only libs out of the bundler. Better-Auth ships optional

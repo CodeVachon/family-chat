@@ -1,8 +1,10 @@
 "use client";
 
-import { removePushSubscription, savePushSubscription } from "@/lib/actions/push";
-
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+import {
+    getVapidPublicKey,
+    removePushSubscription,
+    savePushSubscription
+} from "@/lib/actions/push";
 
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
     const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -25,7 +27,12 @@ export function pushSupported(): boolean {
 
 /** Request permission, subscribe to Web Push, and persist the subscription. */
 export async function subscribeToPush(): Promise<"granted" | "denied" | "unsupported" | "error"> {
-    if (!pushSupported() || !VAPID_PUBLIC_KEY) return "unsupported";
+    if (!pushSupported()) return "unsupported";
+
+    // Fetched at runtime from the server (see getVapidPublicKey) rather than
+    // inlined at build time, so the same image works for any deployment.
+    const vapidPublicKey = await getVapidPublicKey();
+    if (!vapidPublicKey) return "unsupported";
 
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return "denied";
@@ -37,7 +44,7 @@ export async function subscribeToPush(): Promise<"granted" | "denied" | "unsuppo
             existing ??
             (await reg.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
             }));
 
         const json = sub.toJSON();

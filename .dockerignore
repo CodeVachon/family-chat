@@ -1,0 +1,33 @@
+# Dependencies — reinstalled in-image from the lockfile
+node_modules
+**/node_modules
+
+# Build output / caches
+.next
+**/.next
+.turbo
+**/.turbo
+out
+build
+dist
+
+# Local env — secrets are injected at runtime, never baked into the image
+.env
+.env.*
+!.env.example
+
+# VCS & tooling
+.git
+.gitignore
+.fallow
+
+# Editor / OS noise
+.DS_Store
+*.pem
+npm-debug.log*
+*.tsbuildinfo
+
+# Docker / compose — not needed inside the build context
+Dockerfile
+.dockerignore
+docker-compose.yml

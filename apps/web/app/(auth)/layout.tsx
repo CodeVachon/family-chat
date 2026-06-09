@@ -1,6 +1,11 @@
+import { connection } from "next/server";
+
 import { getAppSettings } from "@/lib/queries/app-settings";
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+    // Resolve at request time (mirrors the root layout + manifest). Without this
+    // the auth pages prerender at build and hit the DB, which need not exist then.
+    await connection();
     const { name, iconUrl } = await getAppSettings();
     return (
         <div
