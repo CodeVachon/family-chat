@@ -30,7 +30,7 @@ export function ReactionBar({
     }
 
     return (
-        <div className="mt-1 flex flex-wrap items-center gap-1">
+        <div data-component="ReactionBar" className="mt-1 flex flex-wrap items-center gap-1">
             {reactions.map((r) => (
                 <button
                     key={r.emoji}

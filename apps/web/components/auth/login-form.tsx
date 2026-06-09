@@ -44,7 +44,11 @@ export function LoginForm() {
     }
 
     return (
-        <form onSubmit={handlePasswordLogin} className="flex flex-col gap-4">
+        <form
+            data-component="LoginForm"
+            onSubmit={handlePasswordLogin}
+            className="flex flex-col gap-4"
+        >
             <TextField
                 id="email"
                 label="Email"

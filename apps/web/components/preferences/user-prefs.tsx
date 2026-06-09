@@ -46,7 +46,7 @@ export function UserPrefsProvider({
 export function Timestamp({ date, className }: { date: Date; className?: string }) {
     const { dateTimeFormat, nowTick } = useUserPrefs();
     return (
-        <span suppressHydrationWarning className={className} title={date.toLocaleString()}>
+        <span data-component="Timestamp" suppressHydrationWarning className={className} title={date.toLocaleString()}>
             {formatTimestamp(date, dateTimeFormat, new Date(nowTick))}
         </span>
     );

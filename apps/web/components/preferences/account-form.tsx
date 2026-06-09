@@ -35,7 +35,7 @@ export function AccountForm({ email }: { email: string }) {
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div data-component="AccountForm" className="flex flex-col gap-6">
             <div className="flex flex-col gap-1">
                 <Label>Email</Label>
                 <p className="text-sm text-muted-foreground">{email}</p>

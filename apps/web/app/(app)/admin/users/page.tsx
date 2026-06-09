@@ -34,7 +34,10 @@ export default async function UsersPage() {
     });
 
     return (
-        <div className="flex flex-col gap-3">
+        <div
+            data-component="UsersPage"
+            className="flex flex-col gap-3"
+        >
             <InviteUserForm />
 
             {users.map((u) => {

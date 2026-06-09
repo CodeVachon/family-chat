@@ -11,7 +11,7 @@ function escapeRegex(value: string): string {
 function PlainTextBody({ body, mentions }: { body: string; mentions: MentionSummary[] }) {
     const base = "text-sm break-words whitespace-pre-wrap";
     if (mentions.length === 0) {
-        return <p className={base}>{body}</p>;
+        return <p data-component="PlainTextBody" className={base}>{body}</p>;
     }
 
     const byName = new Map(mentions.map((m) => [m.name, m]));
@@ -37,7 +37,7 @@ function PlainTextBody({ body, mentions }: { body: string; mentions: MentionSumm
     if (cursor < body.length) nodes.push(body.slice(cursor));
 
     return (
-        <p className={base}>
+        <p data-component="PlainTextBody" className={base}>
             {nodes.map((n, i) => (
                 <Fragment key={i}>{n}</Fragment>
             ))}
@@ -58,6 +58,7 @@ export function MessageBody({ body, mentions }: { body: string; mentions: Mentio
 
     return (
         <div
+            data-component="MessageBody"
             className="tiptap-content text-sm break-words"
             dangerouslySetInnerHTML={{ __html: html }}
         />

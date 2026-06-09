@@ -43,7 +43,7 @@ export function ImageUploadField({
     }
 
     return (
-        <div className="flex items-center gap-4">
+        <div data-component="ImageUploadField" className="flex items-center gap-4">
             {renderPreview(value)}
             <div className="flex gap-2">
                 <input

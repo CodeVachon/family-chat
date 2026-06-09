@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { ComposerAttachment, type PendingAttachment } from "@/components/channels/composer-attachment";
+import {
+    ComposerAttachment,
+    type PendingAttachment
+} from "@/components/channels/composer-attachment";
 import {
     RichTextEditor,
     type EditorState,
@@ -49,7 +52,10 @@ export function Composer({
     function startUpload(file: File) {
         const id = crypto.randomUUID();
         const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
-        setItems((prev) => [...prev, { id, name: file.name, previewUrl, status: "uploading", progress: 0 }]);
+        setItems((prev) => [
+            ...prev,
+            { id, name: file.name, previewUrl, status: "uploading", progress: 0 }
+        ]);
         uploadToCloudinary(file, (pct) => update(id, { progress: pct }))
             .then((data) => update(id, { status: "done", progress: 100, data }))
             .catch((err) => {
@@ -76,7 +82,9 @@ export function Composer({
     }
 
     const anyUploading = items.some((it) => it.status === "uploading");
-    const readyAttachments = items.filter((it) => it.status === "done" && it.data).map((it) => it.data!);
+    const readyAttachments = items
+        .filter((it) => it.status === "done" && it.data)
+        .map((it) => it.data!);
     const canSend = !pending && !anyUploading && (!editor.isEmpty || readyAttachments.length > 0);
 
     async function send() {
@@ -104,7 +112,11 @@ export function Composer({
 
     return (
         <div
-            className={cn("relative border-t bg-background p-3", dragOver && "bg-muted/50 ring-2 ring-ring ring-inset")}
+            data-component="Composer"
+            className={cn(
+                "relative border-t bg-background",
+                dragOver && "bg-muted/50 ring-2 ring-ring ring-inset"
+            )}
             onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);
@@ -140,7 +152,7 @@ export function Composer({
                 onTyping={() => sendTyping(channelId)}
             />
 
-            <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 p-3">
                 <input
                     ref={fileInputRef}
                     type="file"

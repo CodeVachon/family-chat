@@ -36,7 +36,10 @@ function SidebarContents({
     onNavigate?: () => void;
 }) {
     return (
-        <div className="flex h-full flex-col">
+        <div
+            data-component="SidebarContents"
+            className="flex h-full flex-col"
+        >
             <div className="flex h-14 items-center border-b px-4">
                 <Link
                     href="/channels"
@@ -92,7 +95,10 @@ export function AppShell({
     const totalUnread = channels.reduce((sum, c) => sum + c.unreadCount, 0);
 
     return (
-        <div className="grid h-svh md:grid-cols-[16rem_1fr]">
+        <div
+            data-component="AppShell"
+            className="grid h-svh md:grid-cols-[16rem_1fr]"
+        >
             <FaviconBadge count={totalUnread} />
             <QuickSwitcher channels={channels} />
             {/* Desktop sidebar */}

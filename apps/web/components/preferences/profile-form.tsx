@@ -30,6 +30,7 @@ function Preview({
 
     return (
         <div
+            data-component="Preview"
             style={tokens as React.CSSProperties}
             className={cn(
                 "flex items-center gap-2 rounded-lg border p-3",
@@ -73,7 +74,7 @@ export function ProfileForm({
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div data-component="ProfileForm" className="flex flex-col gap-6">
             <ImageUploadField
                 value={avatar}
                 onChange={setAvatar}

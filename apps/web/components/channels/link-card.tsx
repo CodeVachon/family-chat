@@ -3,6 +3,7 @@ import type { LinkPreview } from "@workspace/db/schema";
 export function LinkCard({ preview }: { preview: LinkPreview }) {
     return (
         <a
+            data-component="LinkCard"
             href={preview.url}
             target="_blank"
             rel="noopener noreferrer"

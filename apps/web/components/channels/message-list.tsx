@@ -14,14 +14,17 @@ export function MessageList({
 }) {
     if (messages.length === 0) {
         return (
-            <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
+            <div
+                data-component="MessageList"
+                className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground"
+            >
                 No messages yet. Say hello!
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col py-4">
+        <div data-component="MessageList" className="flex flex-col py-4">
             {messages.map((m) => (
                 <MessageItem key={m.id} message={m} viewer={viewer} members={members} />
             ))}

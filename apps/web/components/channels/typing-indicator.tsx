@@ -13,8 +13,13 @@ export function TypingIndicator({ channelId }: { channelId: string }) {
     const typing = typingUsersFor(channelId);
 
     return (
-        <div className="h-5 px-4 text-xs text-muted-foreground" aria-live="polite">
-            {typing.length > 0 ? describe(typing.map((t) => t.name)) : ""}
+        <div className="relative" data-component="TypingIndicator">
+            <div
+                className="absolute right-0 bottom-0 left-0 h-5 px-4 text-xs text-muted-foreground"
+                aria-live="polite"
+            >
+                {typing.length > 0 ? describe(typing.map((t) => t.name)) : ""}
+            </div>
         </div>
     );
 }

@@ -76,7 +76,7 @@ export function MessageToolbar({
         "flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground";
 
     return (
-        <div className="absolute -top-3 right-3 flex items-center gap-1">
+        <div data-component="MessageToolbar" className="absolute -top-3 right-3 flex items-center gap-1">
             {/* Pointer devices: floating bar revealed on hover. */}
             <div
                 className={cn(

@@ -27,7 +27,10 @@ export async function ThreadPanel({
     const valid = root && root.channelId === channelId && !root.threadRootId;
 
     return (
-        <aside className="flex h-full min-h-0 w-full flex-col border-l bg-background lg:w-96">
+        <aside
+            data-component="ThreadPanel"
+            className="flex h-full min-h-0 w-full flex-col border-l bg-background lg:w-96"
+        >
             <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
                 <h2 className="font-heading text-base font-semibold">Thread</h2>
                 <Link

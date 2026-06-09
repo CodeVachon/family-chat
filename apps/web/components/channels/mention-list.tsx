@@ -47,7 +47,10 @@ export const MentionList = forwardRef<
     if (items.length === 0) return null;
 
     return (
-        <div className="w-56 overflow-hidden rounded-lg border bg-popover shadow-md">
+        <div
+            data-component="MentionList"
+            className="w-56 overflow-hidden rounded-lg border bg-popover shadow-md"
+        >
             {items.map((item, i) => (
                 <button
                     key={item.id}

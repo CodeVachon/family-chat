@@ -33,7 +33,10 @@ export function PdfPageViewer({ secureUrl }: { secureUrl: string }) {
 
     if (firstPageFailed) {
         return (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            <div
+                data-component="PdfPageViewer"
+                className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground"
+            >
                 Couldn&apos;t render this PDF. Make sure &ldquo;Allow delivery of PDF and ZIP
                 files&rdquo; is enabled in Cloudinary.
             </div>
@@ -41,7 +44,7 @@ export function PdfPageViewer({ secureUrl }: { secureUrl: string }) {
     }
 
     return (
-        <div className="flex flex-col items-center gap-3 bg-muted/40 p-3">
+        <div data-component="PdfPageViewer" className="flex flex-col items-center gap-3 bg-muted/40 p-3">
             {Array.from({ length: count }, (_, i) => i + 1).map((page) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

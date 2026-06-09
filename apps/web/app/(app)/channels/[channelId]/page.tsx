@@ -59,7 +59,10 @@ export default async function ChannelPage({
     const latestMessageId = messages.length > 0 ? messages[messages.length - 1]!.id : null;
 
     return (
-        <div className="flex h-full min-h-0">
+        <div
+            data-component="ChannelPage"
+            className="flex h-full min-h-0"
+        >
             <div className={cn("flex min-h-0 flex-1 flex-col", threadId && "hidden lg:flex")}>
                 {membership && (
                     <MarkReadOnView channelId={channel.id} latestMessageId={latestMessageId} />

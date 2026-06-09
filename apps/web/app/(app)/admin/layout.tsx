@@ -17,7 +17,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }
 
     return (
-        <div className="mx-auto w-full max-w-4xl px-4 py-8">
+        <div
+            data-component="AdminLayout"
+            className="mx-auto w-full max-w-4xl px-4 py-8"
+        >
             <h1 className="mb-6 font-heading text-2xl font-semibold">Administration</h1>
             <TabNav tabs={TABS} />
             {children}

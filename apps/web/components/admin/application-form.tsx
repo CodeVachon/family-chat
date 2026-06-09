@@ -33,7 +33,10 @@ export function ApplicationForm({ initial }: { initial: { name: string; iconUrl:
     }
 
     return (
-        <div className="flex max-w-md flex-col gap-6">
+        <div
+            data-component="ApplicationForm"
+            className="flex max-w-md flex-col gap-6"
+        >
             <div className="flex flex-col gap-2">
                 <Label>Icon</Label>
                 <ImageUploadField

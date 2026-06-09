@@ -66,7 +66,7 @@ export function NotificationsForm({
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div data-component="NotificationsForm" className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
                 <Label>Notify me about</Label>
                 <RadioGroup value={level} onValueChange={(v) => setLevel(String(v) as NotificationLevel)}>

@@ -42,6 +42,7 @@ export function MessageScroller({
 
     return (
         <div
+            data-component="MessageScroller"
             ref={ref}
             onScroll={handleScroll}
             style={accentColor ? ({ "--scrollbar-accent": accentColor } as React.CSSProperties) : undefined}

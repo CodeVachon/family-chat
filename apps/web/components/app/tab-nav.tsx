@@ -9,7 +9,10 @@ import { cn } from "@workspace/ui/lib/utils";
 export function TabNav({ tabs }: { tabs: { href: string; label: string }[] }) {
     const pathname = usePathname();
     return (
-        <nav className="mb-6 inline-flex gap-1 rounded-lg bg-muted p-1">
+        <nav
+            data-component="TabNav"
+            className="mb-6 inline-flex gap-1 rounded-lg bg-muted p-1"
+        >
             {tabs.map((tab) => {
                 const active = pathname.startsWith(tab.href);
                 return (

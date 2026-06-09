@@ -11,7 +11,7 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
     const files = attachments.filter((a) => a.kind !== "image" && a.kind !== "pdf");
 
     return (
-        <div className="flex flex-col gap-2">
+        <div data-component="MessageAttachments" className="flex flex-col gap-2">
             {images.length > 0 && (
                 <ImageGallery images={images.map((a) => ({ id: a.id, secureUrl: a.secureUrl }))} />
             )}

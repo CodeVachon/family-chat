@@ -11,16 +11,7 @@ import {
     type Editor
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import {
-    Bold,
-    Code,
-    Italic,
-    Link2,
-    List,
-    ListOrdered,
-    Mic,
-    Strikethrough
-} from "lucide-react";
+import { Bold, Code, Italic, Link2, List, ListOrdered, Mic, Strikethrough } from "lucide-react";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 
 import { EmojiPicker } from "@/components/channels/emoji-picker";
@@ -98,6 +89,7 @@ function ToolbarButton({
 }) {
     return (
         <button
+            data-component="ToolbarButton"
             type="button"
             aria-label={label}
             aria-pressed={active}
@@ -143,23 +135,50 @@ function Toolbar({ editor }: { editor: Editor }) {
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-0.5 border-b px-1 py-1">
-            <ToolbarButton label="Bold" active={state.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <div
+            data-component="Toolbar"
+            className="flex flex-wrap items-center gap-0.5 border-b px-1 py-1"
+        >
+            <ToolbarButton
+                label="Bold"
+                active={state.bold}
+                onClick={() => editor.chain().focus().toggleBold().run()}
+            >
                 <Bold className="size-4" />
             </ToolbarButton>
-            <ToolbarButton label="Italic" active={state.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
+            <ToolbarButton
+                label="Italic"
+                active={state.italic}
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+            >
                 <Italic className="size-4" />
             </ToolbarButton>
-            <ToolbarButton label="Strikethrough" active={state.strike} onClick={() => editor.chain().focus().toggleStrike().run()}>
+            <ToolbarButton
+                label="Strikethrough"
+                active={state.strike}
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+            >
                 <Strikethrough className="size-4" />
             </ToolbarButton>
-            <ToolbarButton label="Inline code" active={state.code} onClick={() => editor.chain().focus().toggleCode().run()}>
+            <ToolbarButton
+                label="Inline code"
+                active={state.code}
+                onClick={() => editor.chain().focus().toggleCode().run()}
+            >
                 <Code className="size-4" />
             </ToolbarButton>
-            <ToolbarButton label="Bullet list" active={state.bullet} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+            <ToolbarButton
+                label="Bullet list"
+                active={state.bullet}
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+            >
                 <List className="size-4" />
             </ToolbarButton>
-            <ToolbarButton label="Numbered list" active={state.ordered} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+            <ToolbarButton
+                label="Numbered list"
+                active={state.ordered}
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            >
                 <ListOrdered className="size-4" />
             </ToolbarButton>
             <ToolbarButton label="Link" active={state.link} onClick={toggleLink}>
@@ -195,70 +214,81 @@ export const RichTextEditor = forwardRef<
         onTyping?: () => void;
         className?: string;
     }
->(({ members, placeholder, autoFocus, initialHtml, onChange, onSubmit, onTyping, className }, ref) => {
-    // Keep callbacks/members fresh without re-creating the editor. These are
-    // only read later (in event handlers / the mention plugin), never in render.
-    const membersRef = useRef(members);
-    const onSubmitRef = useRef(onSubmit);
-    const onTypingRef = useRef(onTyping);
-    useEffect(() => {
-        membersRef.current = members;
-        onSubmitRef.current = onSubmit;
-        onTypingRef.current = onTyping;
-    });
-
-    const emit = (editor: Editor) =>
-        onChange({
-            html: editor.isEmpty ? "" : editor.getHTML(),
-            isEmpty: editor.isEmpty,
-            mentionIds: extractMentionIds(editor.getJSON())
+>(
+    (
+        { members, placeholder, autoFocus, initialHtml, onChange, onSubmit, onTyping, className },
+        ref
+    ) => {
+        // Keep callbacks/members fresh without re-creating the editor. These are
+        // only read later (in event handlers / the mention plugin), never in render.
+        const membersRef = useRef(members);
+        const onSubmitRef = useRef(onSubmit);
+        const onTypingRef = useRef(onTyping);
+        useEffect(() => {
+            membersRef.current = members;
+            onSubmitRef.current = onSubmit;
+            onTypingRef.current = onTyping;
         });
 
-    const editor = useEditor({
-        immediatelyRender: false,
-        extensions: [
-            StarterKit.configure({ link: { openOnClick: false } }),
-            Placeholder.configure({ placeholder: placeholder ?? "Write a message…" }),
-            Mention.configure({
-                HTMLAttributes: { class: "mention" },
-                // eslint-disable-next-line react-hooks/refs -- getter is invoked by the plugin after mount, not during render
-                suggestion: mentionSuggestion(() => membersRef.current)
-            })
-        ],
-        content: initialHtml ?? "",
-        autofocus: autoFocus ? "end" : false,
-        editorProps: {
-            attributes: {
-                // text-base (16px) on mobile prevents iOS Safari's focus auto-zoom;
-                // shrink to text-sm on larger screens where zoom isn't triggered.
-                class: "tiptap-content max-h-48 min-h-10 overflow-y-auto px-3 py-2 text-base outline-none sm:text-sm"
-            },
-            handleKeyDown: (_view, event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    onSubmitRef.current?.();
-                    return true;
+        const emit = (editor: Editor) =>
+            onChange({
+                html: editor.isEmpty ? "" : editor.getHTML(),
+                isEmpty: editor.isEmpty,
+                mentionIds: extractMentionIds(editor.getJSON())
+            });
+
+        const editor = useEditor({
+            immediatelyRender: false,
+            extensions: [
+                StarterKit.configure({ link: { openOnClick: false } }),
+                Placeholder.configure({ placeholder: placeholder ?? "Write a message…" }),
+                Mention.configure({
+                    HTMLAttributes: { class: "mention" },
+                    // eslint-disable-next-line react-hooks/refs -- getter is invoked by the plugin after mount, not during render
+                    suggestion: mentionSuggestion(() => membersRef.current)
+                })
+            ],
+            content: initialHtml ?? "",
+            autofocus: autoFocus ? "end" : false,
+            editorProps: {
+                attributes: {
+                    // text-base (16px) on mobile prevents iOS Safari's focus auto-zoom;
+                    // shrink to text-sm on larger screens where zoom isn't triggered.
+                    class: "tiptap-content max-h-48 min-h-10 overflow-y-auto px-3 py-2 text-base outline-none sm:text-sm"
+                },
+                handleKeyDown: (_view, event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        onSubmitRef.current?.();
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
+            },
+            onUpdate: ({ editor }) => {
+                emit(editor);
+                if (!editor.isEmpty) onTypingRef.current?.();
             }
-        },
-        onUpdate: ({ editor }) => {
-            emit(editor);
-            if (!editor.isEmpty) onTypingRef.current?.();
-        }
-    });
+        });
 
-    useImperativeHandle(ref, () => ({
-        clear: () => editor?.commands.clearContent(true),
-        focus: () => editor?.commands.focus("end")
-    }));
+        useImperativeHandle(ref, () => ({
+            clear: () => editor?.commands.clearContent(true),
+            focus: () => editor?.commands.focus("end")
+        }));
 
-    return (
-        <div className={cn("rounded-2xl border bg-background focus-within:ring-3 focus-within:ring-ring/30", className)}>
-            {editor && <Toolbar editor={editor} />}
-            <EditorContent editor={editor} />
-        </div>
-    );
-});
+        return (
+            <div
+                data-component="RichTextEditor"
+                className={cn(
+                    "bg-background focus-within:ring-3 focus-within:ring-ring/30",
+                    className
+                )}
+            >
+                {editor && <Toolbar editor={editor} />}
+                <EditorContent editor={editor} />
+            </div>
+        );
+    }
+);
 
 RichTextEditor.displayName = "RichTextEditor";

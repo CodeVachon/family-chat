@@ -32,6 +32,7 @@ export default function RootLayout({
 }>) {
     return (
         <html
+            data-component="RootLayout"
             lang="en"
             suppressHydrationWarning
             className={cn(

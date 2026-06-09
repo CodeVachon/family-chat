@@ -63,7 +63,7 @@ function InlineEditor({
     }
 
     return (
-        <div className="mt-1 flex flex-col gap-2">
+        <div data-component="InlineEditor" className="mt-1 flex flex-col gap-2">
             <RichTextEditor
                 members={members}
                 autoFocus
@@ -115,6 +115,7 @@ export function MessageItem({
 
     return (
         <div
+            data-component="MessageItem"
             onClick={handleTouchTap}
             className={cn(
                 "group relative flex gap-3 px-4 py-1.5 hover:bg-muted/30",

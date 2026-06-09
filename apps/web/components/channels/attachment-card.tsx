@@ -20,6 +20,7 @@ export function AttachmentCard({ attachment }: { attachment: FileAttachment }) {
 
     return (
         <a
+            data-component="AttachmentCard"
             href={attachment.secureUrl}
             target="_blank"
             rel="noopener noreferrer"

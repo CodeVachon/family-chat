@@ -30,7 +30,7 @@ function isRedirectError(err: unknown): boolean {
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
     return (
-        <div className="flex flex-wrap gap-2">
+        <div data-component="ColorPicker" className="flex flex-wrap gap-2">
             {CHANNEL_COLORS.map((c) => (
                 <button
                     key={c}
@@ -52,7 +52,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 
 function IconPicker({ value, onChange }: { value: string; onChange: (i: string) => void }) {
     return (
-        <div className="flex flex-wrap gap-2">
+        <div data-component="IconPicker" className="flex flex-wrap gap-2">
             {CHANNEL_ICONS.map((i) => (
                 <button
                     key={i}
@@ -179,7 +179,7 @@ function ChannelForm({
     const submitLabel = pending ? "Saving…" : isEdit ? "Save changes" : "Create channel";
 
     return (
-        <form action={handleSubmit} className="flex flex-col gap-4">
+        <form data-component="ChannelForm" action={handleSubmit} className="flex flex-col gap-4">
             <DialogHeader>
                 <DialogTitle>{isEdit ? "Edit channel" : "Create channel"}</DialogTitle>
                 <DialogDescription>

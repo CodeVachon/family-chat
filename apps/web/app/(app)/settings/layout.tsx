@@ -11,7 +11,10 @@ const TABS = [
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
     await requireApprovedUser();
     return (
-        <div className="mx-auto w-full max-w-2xl px-4 py-8">
+        <div
+            data-component="SettingsLayout"
+            className="mx-auto w-full max-w-2xl px-4 py-8"
+        >
             <h1 className="mb-6 font-heading text-2xl font-semibold">Settings</h1>
             <TabNav tabs={TABS} />
             {children}

@@ -23,7 +23,10 @@ export function ComposerAttachment({
     const isImage = Boolean(item.previewUrl);
 
     return (
-        <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border bg-muted">
+        <div
+            data-component="ComposerAttachment"
+            className="relative size-16 shrink-0 overflow-hidden rounded-lg border bg-muted"
+        >
             {isImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.previewUrl} alt={item.name} className="size-full object-cover" />

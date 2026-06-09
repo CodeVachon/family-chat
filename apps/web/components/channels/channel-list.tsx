@@ -24,6 +24,7 @@ export type SidebarChannel = {
 function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boolean }) {
     return (
         <Link
+            data-component="ChannelLink"
             href={`/channels/${channel.id}`}
             onClick={() => undefined}
             className={cn(
@@ -35,7 +36,12 @@ function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boo
             )}
         >
             <ChannelIcon icon={channel.icon} color={channel.color} className="size-4 shrink-0" />
-            <span className={cn("truncate", channel.unreadCount > 0 && !active && "font-semibold text-foreground")}>
+            <span
+                className={cn(
+                    "truncate",
+                    channel.unreadCount > 0 && !active && "font-semibold text-foreground"
+                )}
+            >
                 {channel.name}
             </span>
             {channel.isPrivate && <Lock className="size-3 shrink-0 opacity-70" />}

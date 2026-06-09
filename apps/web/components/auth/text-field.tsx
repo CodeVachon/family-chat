@@ -9,7 +9,10 @@ export function TextField({
     ...props
 }: { id: string; label: string } & React.ComponentProps<typeof Input>) {
     return (
-        <div className="flex flex-col gap-2">
+        <div
+            data-component="TextField"
+            className="flex flex-col gap-2"
+        >
             <Label htmlFor={id}>{label}</Label>
             <Input id={id} {...props} />
         </div>

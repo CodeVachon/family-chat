@@ -28,7 +28,7 @@ export function UserName({
     className?: string;
 }) {
     return (
-        <span className={cn("font-medium", className)} style={{ color: colorVar(colorHue) }}>
+        <span data-component="UserName" className={cn("font-medium", className)} style={{ color: colorVar(colorHue) }}>
             {name}
         </span>
     );

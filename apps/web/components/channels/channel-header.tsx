@@ -30,7 +30,10 @@ export function ChannelHeader({
     addableUsers: { id: string; name: string }[];
 }) {
     return (
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
+        <header
+            data-component="ChannelHeader"
+            className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4"
+        >
             <ChannelIcon icon={channel.icon} color={channel.color} className="size-5 shrink-0" />
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
