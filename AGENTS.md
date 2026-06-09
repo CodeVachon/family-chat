@@ -16,6 +16,12 @@ Audit defaults to `gate=new-only`: only findings introduced by the current chang
 
 ---
 
+## Formatting
+
+Before finishing any task that touches code, run `bun run format` (or `bunx prettier --write` on the files you changed) so everything is formatted with Prettier. Do not consider a task complete until the changed files pass Prettier.
+
+---
+
 ## Issue tracking — Linear
 
 We use **Linear** as our issue tracker. Use the Linear MCP server (`linear-server`) for all issue work — do not invent a different tracker or store issues in the repo.
