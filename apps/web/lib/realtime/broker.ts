@@ -39,6 +39,12 @@ type Subscriber = {
 
 const PRESENCE_GRACE_MS = 3000;
 
+// Bound in-memory SSE subscribers so a single user (or script) can't open
+// thousands of connections and exhaust memory / file descriptors. Per-user
+// covers a handful of tabs/devices; the global ceiling is a backstop.
+const MAX_CONNECTIONS_PER_USER = 10;
+const MAX_TOTAL_CONNECTIONS = 1000;
+
 /**
  * Single in-process broker holding one Postgres LISTEN connection and fanning
  * `chat_events` out to all connected SSE subscribers. Typing/presence are
@@ -116,11 +122,27 @@ class Broker {
         this.dispatch(event);
     }
 
+    /**
+     * Whether a new connection for this user would be within the per-user and
+     * global caps. Lets the route reject with a 429 before opening the stream.
+     */
+    hasCapacityFor(userId: string): boolean {
+        return !this.atCapacity(userId);
+    }
+
+    private atCapacity(userId: string): boolean {
+        if (this.subscribers.size >= MAX_TOTAL_CONNECTIONS) return true;
+        return (this.connectionCounts.get(userId) ?? 0) >= MAX_CONNECTIONS_PER_USER;
+    }
+
     subscribe(opts: {
         userId: string;
         channelIds: string[];
         push: (event: RealtimeEvent) => void;
-    }): () => void {
+    }): (() => void) | null {
+        // Authoritative guard (the route's pre-check can race under bursts).
+        if (this.atCapacity(opts.userId)) return null;
+
         const id = this.nextId++;
         this.subscribers.set(id, {
             id,

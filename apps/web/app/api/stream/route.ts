@@ -18,6 +18,11 @@ export async function GET(request: Request) {
     const broker = getBroker();
     await broker.start();
 
+    // Reject before opening the stream when the user is at their connection cap.
+    if (!broker.hasCapacityFor(userId)) {
+        return new Response("Too many concurrent connections", { status: 429 });
+    }
+
     // Channels this user can receive events for (public + member channels).
     const channels = await listVisibleChannels(userId);
     const channelIds = channels.map((c) => c.id);
@@ -43,8 +48,17 @@ export async function GET(request: Request) {
             };
 
             controller.enqueue(encodeRetry(3000));
-            push({ type: "ready", ts: Date.now() });
             unsubscribe = broker.subscribe({ userId, channelIds, push });
+            if (!unsubscribe) {
+                // Raced past the pre-check and hit the cap — close immediately.
+                try {
+                    controller.close();
+                } catch {
+                    /* already closed */
+                }
+                return;
+            }
+            push({ type: "ready", ts: Date.now() });
 
             heartbeat = setInterval(() => {
                 try {
