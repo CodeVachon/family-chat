@@ -2,14 +2,14 @@ import { ChannelHeader } from "@/components/channels/channel-header";
 import { Composer } from "@/components/channels/composer";
 import { JoinButton } from "@/components/channels/join-button";
 import { MarkReadOnView } from "@/components/channels/mark-read-on-view";
-import { MessageList } from "@/components/channels/message-list";
+import { MessageHistory } from "@/components/channels/message-history";
 import { MessageScroller } from "@/components/channels/message-scroller";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
 import { ThreadPanel } from "@/components/channels/thread-panel";
 import { TypingIndicator } from "@/components/channels/typing-indicator";
 import { authorizeChannel } from "@/lib/dal";
 import { canInChannel } from "@/lib/permissions";
-import { listChannelMembers, listChannelMessages } from "@/lib/queries/channels";
+import { CHANNEL_PAGE_SIZE, listChannelMembers, listChannelMessages } from "@/lib/queries/channels";
 import { listApprovedUsers } from "@/lib/queries/users";
 import { cn } from "@workspace/ui/lib/utils";
 
@@ -76,7 +76,13 @@ export default async function ChannelPage({
                     bottomKey={`${latestMessageId}:${messages.length}`}
                     accentColor={channel.color}
                 >
-                    <MessageList messages={messages} viewer={viewer} members={composerMembers} />
+                    <MessageHistory
+                        channelId={channel.id}
+                        initialMessages={messages}
+                        initialHasMore={messages.length >= CHANNEL_PAGE_SIZE}
+                        viewer={viewer}
+                        members={composerMembers}
+                    />
                 </MessageScroller>
 
                 <TypingIndicator channelId={channel.id} />
