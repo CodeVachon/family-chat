@@ -102,6 +102,24 @@ All configuration is read from the environment at runtime — see `.env.example`
 | `CLOUDINARY_*`                                           | Media uploads                                                    |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push — generate keys with `npx web-push generate-vapid-keys` |
 
+### Secrets & credentials
+
+`.env` is gitignored (only `.env.example` is tracked) and the image bakes in no
+secrets, so credentials never reach version control or a published image. They
+**do** live in plaintext in your local `.env`, so:
+
+- Treat the local `.env` as sensitive — don't commit it, paste it, or copy it
+  into a shared machine, backup, or image layer.
+- **Rotate any real credentials before sharing the machine or an image**, and
+  rotate immediately if a key may have leaked. The third-party secrets here are
+  the Resend API key (`RESEND_API_KEY`), the Cloudinary API secret
+  (`CLOUDINARY_API_SECRET`), the VAPID private key (`VAPID_PRIVATE_KEY`), and the
+  Sentry auth token (`SENTRY_AUTH_TOKEN`). Each is rotated from its own
+  provider dashboard.
+- `SENTRY_AUTH_TOKEN` can modify the Sentry org, so prefer a credential manager
+  (e.g. 1Password's `op run`, `direnv` + the OS keychain, or your CI's secret
+  store) over a flat file — and scope the token to source-map upload only.
+
 ## Running with Docker
 
 The app ships a multi-stage `Dockerfile` that produces a small, self-contained image running Next's standalone server. The image bakes in **no** configuration or secrets — everything is supplied at runtime via `--env-file`.
