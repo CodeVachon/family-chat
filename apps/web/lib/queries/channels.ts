@@ -135,6 +135,23 @@ export async function listVisibleChannels(userId: string) {
 
 export type VisibleChannel = Awaited<ReturnType<typeof listVisibleChannels>>[number];
 
+/**
+ * Just the IDs of channels visible to a user (public + private they belong to).
+ * A cheap variant of {@link listVisibleChannels} without the unread/mention
+ * subqueries — used by the realtime broker to (re)resolve SSE fan-out scope.
+ */
+export async function listVisibleChannelIds(userId: string): Promise<string[]> {
+    const rows = await db
+        .select({ id: channels.id })
+        .from(channels)
+        .leftJoin(
+            channelMembers,
+            and(eq(channelMembers.channelId, channels.id), eq(channelMembers.userId, userId))
+        )
+        .where(or(eq(channels.isPrivate, false), isNotNull(channelMembers.userId)));
+    return rows.map((r) => r.id);
+}
+
 export async function getChannel(channelId: string) {
     return db.query.channels.findFirst({ where: eq(channels.id, channelId) });
 }

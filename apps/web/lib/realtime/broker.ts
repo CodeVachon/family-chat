@@ -2,6 +2,8 @@ import "server-only";
 
 import postgres from "postgres";
 
+import { listVisibleChannelIds } from "@/lib/queries/channels";
+
 export type RealtimeEvent = {
     type:
         | "ready"
@@ -51,6 +53,10 @@ class Broker {
     private startPromise: Promise<void> | null = null;
     private listenedOnce = false;
 
+    // Coalesces bursts of channels.changed into a single membership re-resolve.
+    private refreshing = false;
+    private refreshQueued = false;
+
     // Presence
     private connectionCounts = new Map<string, number>();
     private online = new Set<string>();
@@ -78,8 +84,10 @@ class Broker {
     /** Fires on initial LISTEN and on every reconnect. */
     private onListen(): void {
         if (this.listenedOnce) {
-            // A reconnect may have missed notifications — have clients refetch.
+            // A reconnect may have missed notifications — have clients refetch and
+            // re-resolve fan-out scope in case a channels.changed was missed.
             this.broadcast({ type: "resync", ts: Date.now() });
+            void this.refreshSubscriptions();
         }
         this.listenedOnce = true;
     }
@@ -91,7 +99,53 @@ class Broker {
         } catch {
             return;
         }
+        // Channel/membership changed: re-resolve every subscriber's visible
+        // channel set so server-side fan-out is authoritative — a removed member
+        // stops receiving channel events even if its client never reconnects.
+        if (event.type === "channels.changed") void this.refreshSubscriptions();
         this.dispatch(event);
+    }
+
+    /**
+     * Re-query each connected user's visible channels and replace their
+     * subscription set so server-side fan-out is authoritative. Coalesces
+     * concurrent calls: a burst of channels.changed collapses into a single
+     * follow-up pass once the in-flight one finishes.
+     */
+    private async refreshSubscriptions(): Promise<void> {
+        if (this.refreshing) {
+            this.refreshQueued = true;
+            return;
+        }
+        this.refreshing = true;
+        try {
+            do {
+                this.refreshQueued = false;
+                await this.resolveAllSubscriptions();
+            } while (this.refreshQueued);
+        } finally {
+            this.refreshing = false;
+        }
+    }
+
+    /** Re-resolve the channel set of every distinct connected user (once each). */
+    private async resolveAllSubscriptions(): Promise<void> {
+        const userIds = new Set<string>();
+        for (const sub of this.subscribers.values()) userIds.add(sub.userId);
+        for (const userId of userIds) await this.resolveUserSubscription(userId);
+    }
+
+    /** Replace one user's subscription set; keeps the old set on query failure. */
+    private async resolveUserSubscription(userId: string): Promise<void> {
+        let next: Set<string>;
+        try {
+            next = new Set(await listVisibleChannelIds(userId));
+        } catch {
+            return;
+        }
+        for (const sub of this.subscribers.values()) {
+            if (sub.userId === userId) sub.channelIds = next;
+        }
     }
 
     /** Route an event to the subscribers that should receive it. */

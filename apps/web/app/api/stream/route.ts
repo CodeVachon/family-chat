@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/dal";
 import { getBroker, type RealtimeEvent } from "@/lib/realtime/broker";
 import { encodeHeartbeat, encodeRetry, encodeSSE } from "@/lib/realtime/sse";
-import { listVisibleChannels } from "@/lib/queries/channels";
+import { listVisibleChannelIds } from "@/lib/queries/channels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,9 +18,10 @@ export async function GET(request: Request) {
     const broker = getBroker();
     await broker.start();
 
-    // Channels this user can receive events for (public + member channels).
-    const channels = await listVisibleChannels(userId);
-    const channelIds = channels.map((c) => c.id);
+    // Channels this user can receive events for (public + member channels). The
+    // broker re-resolves this server-side on channels.changed, so fan-out stays
+    // authoritative even if the client never reconnects.
+    const channelIds = await listVisibleChannelIds(userId);
 
     let unsubscribe: (() => void) | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
