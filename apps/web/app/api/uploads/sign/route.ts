@@ -17,5 +17,5 @@ export async function POST() {
     }
 
     const timestamp = Math.round(Date.now() / 1000);
-    return Response.json(signUpload(timestamp));
+    return Response.json(signUpload(timestamp, session.user.id));
 }
