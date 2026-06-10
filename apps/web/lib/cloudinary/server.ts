@@ -8,8 +8,52 @@ const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
 export const UPLOAD_FOLDER = "family-chat";
 
+/** Host that serves Cloudinary delivery URLs. */
+const CLOUDINARY_DELIVERY_HOST = "res.cloudinary.com";
+
 export function isCloudinaryConfigured(): boolean {
     return Boolean(cloudName && apiKey && apiSecret);
+}
+
+/**
+ * Validate that a client-supplied attachment URL is a genuine Cloudinary
+ * delivery URL for *our* cloud — not a `javascript:`/`data:` href, an arbitrary
+ * host, or a Cloudinary `fetch`-type proxy of remote content. Clients send
+ * attachment metadata verbatim to `postMessage`, so this is the server-side
+ * gate that prevents stored XSS / content injection via `secureUrl`.
+ *
+ * Requires: `https:` scheme, the `res.cloudinary.com` host, our configured
+ * cloud name as the first path segment, a known resource type, an `upload`
+ * delivery type followed immediately by the `v<version>` segment (so no
+ * attacker-supplied transformation — e.g. `l_fetch:`/`l_text:` overlays — can
+ * be smuggled in), and the claimed `publicId` present in the delivery path.
+ */
+export function isValidAttachmentUrl(secureUrl: string, publicId: string): boolean {
+    if (!cloudName || !publicId) return false;
+
+    let url: URL;
+    try {
+        url = new URL(secureUrl);
+    } catch {
+        return false;
+    }
+
+    if (url.protocol !== "https:") return false;
+    if (url.hostname !== CLOUDINARY_DELIVERY_HOST) return false;
+
+    // Path shape: /<cloud>/<resourceType>/upload/v<version>/<...>/<publicId>.<ext>
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments[0] !== cloudName) return false;
+    if (!["image", "raw", "video"].includes(segments[1] ?? "")) return false;
+    // Only signed uploads ("upload"); reject "fetch"/"url" which proxy remote URLs.
+    if (segments[2] !== "upload") return false;
+    // The version must follow "upload" directly — a delivered upload URL has no
+    // transformation segment in between, so this rules out injected transforms.
+    if (!/^v\d+$/.test(segments[3] ?? "")) return false;
+
+    // The delivery path must reference the claimed asset (and thus our folder,
+    // since uploads are signed into UPLOAD_FOLDER and the folder is part of the id).
+    return decodeURIComponent(url.pathname).includes(`/${publicId}`);
 }
 
 export type UploadSignature = {
