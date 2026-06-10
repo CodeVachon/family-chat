@@ -116,7 +116,13 @@ export function renderMessageHtml(body: string, mentions: MentionHue[]): string 
     DOMPurify.addHook("afterSanitizeAttributes", (node) => {
         if (node.nodeType !== 1 || typeof node.getAttribute !== "function") return;
         if (node.tagName === "SPAN" && node.getAttribute("data-type") === "mention") {
-            const hue = hueById.get(node.getAttribute("data-id") ?? "") ?? 220;
+            // Coerce to a finite number clamped to a valid oklch hue (0–360)
+            // before interpolating. This style is injected *after* DOMPurify's
+            // attribute sanitization, so the value is never re-validated — keep
+            // it strictly numeric so a future non-numeric/user-influenced
+            // colorHue can't inject CSS. Falls back to the default hue (220).
+            const rawHue = Number(hueById.get(node.getAttribute("data-id") ?? ""));
+            const hue = Number.isFinite(rawHue) ? Math.min(360, Math.max(0, rawHue)) : 220;
             node.setAttribute("style", `color: oklch(var(--user-l) var(--user-c) ${hue})`);
         }
         if (node.tagName === "A") {
