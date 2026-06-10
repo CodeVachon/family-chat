@@ -1,12 +1,12 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 
 import { db } from "@workspace/db/client";
-import { user as userTable } from "@workspace/db/schema";
+import { user as userTable, verification } from "@workspace/db/schema";
 
 import { auth } from "@/lib/auth";
 import { requireApprovedUser } from "@/lib/dal";
@@ -134,16 +134,29 @@ export async function inviteUser(input: unknown) {
         approvedByUserId: actor.id
     });
 
-    // Send the invite atomically with creation: if the email fails, roll back the
-    // insert so we never leave an orphaned approved account that the admin thinks
-    // was never created (and that has no way to authenticate).
+    // Send the invite atomically with creation: if the email fails, roll back so
+    // we never leave an orphaned approved account the admin thinks was never
+    // created, nor a live magic-link token for it.
     try {
         await auth.api.signInMagicLink({
             body: { email: data.email, callbackURL: "/" },
             headers: await headers()
         });
     } catch (err) {
-        await db.delete(userTable).where(eq(userTable.id, userId));
+        // Cleanup runs in its own try so a cleanup failure can't mask (replace)
+        // the original send error the admin needs to see.
+        try {
+            await db.delete(userTable).where(eq(userTable.id, userId));
+            // Better-Auth writes the magic-link token row *before* sending, keyed
+            // by a random token with the email embedded in its JSON `value`
+            // (`{"email":"..."}`). Match on that; anchored quotes avoid
+            // substring collisions and LIKE wildcards in the address are escaped
+            // (Postgres LIKE's default escape is backslash).
+            const emailPattern = `%"email":"${data.email.replace(/[\\%_]/g, "\\$&")}"%`;
+            await db.delete(verification).where(like(verification.value, emailPattern));
+        } catch {
+            /* best-effort cleanup — surface the original send error below */
+        }
         throw err;
     }
 
