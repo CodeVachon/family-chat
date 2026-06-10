@@ -17,8 +17,63 @@ type CachedSession = {
     user?: { approvalStatus?: string };
 } | null;
 
+/**
+ * Build a strict, nonce-based Content-Security-Policy. `'strict-dynamic'` makes
+ * the policy trust only the nonce'd bootstrap script (and what it loads), so a
+ * DOMPurify bypass that smuggles a <script> or inline handler through
+ * `message-body`'s dangerouslySetInnerHTML still can't execute. Styles fall back
+ * to 'unsafe-inline' (Tailwind + inline style attrs can't be nonced practically);
+ * Cloudinary is allowed for image/media delivery + signed uploads; the Sentry
+ * replay/monitoring tunnel is same-origin (`tunnelRoute: "/monitoring"`) so
+ * 'self' covers it. Dev adds 'unsafe-eval' (React Refresh) and ws: (HMR).
+ */
+function buildCsp(nonce: string): string {
+    const isProd = process.env.NODE_ENV === "production";
+    return [
+        `default-src 'self'`,
+        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProd ? "" : " 'unsafe-eval'"}`,
+        `style-src 'self' 'unsafe-inline'`,
+        // Any https image: link-preview thumbnails + favicons come from arbitrary
+        // third-party hosts. Images can't execute script, so this is safe while
+        // script-src stays strict.
+        `img-src 'self' blob: data: https:`,
+        `media-src 'self' blob: https://res.cloudinary.com`,
+        `font-src 'self' data:`,
+        `connect-src 'self' https://api.cloudinary.com${isProd ? "" : " ws: wss:"}`,
+        `worker-src 'self' blob:`,
+        `manifest-src 'self'`,
+        `frame-src 'none'`,
+        `object-src 'none'`,
+        `base-uri 'self'`,
+        `form-action 'self'`,
+        `frame-ancestors 'none'`,
+        ...(isProd ? ["upgrade-insecure-requests"] : [])
+    ].join("; ");
+}
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    // Per-request CSP nonce. Forwarding it on the request lets Next inject it into
+    // its own inline bootstrap script and re-expose it via `x-nonce`, which the
+    // root layout reads to nonce next-themes' inline theme script.
+    const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+    const csp = buildCsp(nonce);
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("content-security-policy", csp);
+
+    const withCsp = (response: NextResponse): NextResponse => {
+        response.headers.set("content-security-policy", csp);
+        return response;
+    };
+    const next = () => withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
+    const redirectTo = (to: string) => {
+        const url = request.nextUrl.clone();
+        url.pathname = to;
+        return withCsp(NextResponse.redirect(url));
+    };
 
     const hasSession = Boolean(getSessionCookie(request));
     const cached = (await getCookieCache(request)) as CachedSession;
@@ -30,33 +85,19 @@ export async function proxy(request: NextRequest) {
 
     // Not logged in: allow auth routes, redirect everything else to /login.
     if (!hasSession) {
-        if (isAuthRoute) return NextResponse.next();
-        const url = request.nextUrl.clone();
-        url.pathname = "/login";
-        return NextResponse.redirect(url);
+        if (isAuthRoute) return next();
+        return redirectTo("/login");
     }
 
     // Logged in — keep them off the auth screens.
-    if (isAuthRoute) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/";
-        return NextResponse.redirect(url);
-    }
+    if (isAuthRoute) return redirectTo("/");
 
     // Optimistic approval routing — only act when the cache tells us definitively.
     // When the cache has lapsed, let the request through; the DAL gates approval.
-    if (approvalKnown && !isApproved && !isPendingRoute) {
-        const url = request.nextUrl.clone();
-        url.pathname = PENDING_ROUTE;
-        return NextResponse.redirect(url);
-    }
-    if (approvalKnown && isApproved && isPendingRoute) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/";
-        return NextResponse.redirect(url);
-    }
+    if (approvalKnown && !isApproved && !isPendingRoute) return redirectTo(PENDING_ROUTE);
+    if (approvalKnown && isApproved && isPendingRoute) return redirectTo("/");
 
-    return NextResponse.next();
+    return next();
 }
 
 export const config = {
