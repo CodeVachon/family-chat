@@ -7,13 +7,14 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
     dsn: process.env.SENTRY_DSN,
 
-    // Adjust in production, or use tracesSampler for finer control.
-    tracesSampleRate: 1,
+    // Sample 10% of traces in production (full volume in dev for debugging).
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1,
 
     // Send logs to Sentry.
     enableLogs: true,
 
-    // Send user PII (IP, request headers, etc.). See:
+    // Don't attach user PII (IP, request headers, etc.). This is a private
+    // family chat — keep request metadata out of the error backend.
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-    sendDefaultPii: true
+    sendDefaultPii: false
 });
