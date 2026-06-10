@@ -107,6 +107,12 @@ export const auth = betterAuth({
 
     plugins: [
         magicLink({
+            // Signup flows through /signup + admin approval, so magic links must
+            // only authenticate existing accounts. Without this, anyone could make
+            // our domain email arbitrary addresses and accrue unsolicited pending
+            // user rows (email-bombing / enumeration). Rate-limit the endpoint too.
+            disableSignUp: true,
+            rateLimit: { window: 60, max: 5 },
             sendMagicLink: async ({ email, url }) => {
                 const name = await appName();
                 const { subject, html } = magicLinkEmail(url, name);
