@@ -8,11 +8,12 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-    // Capture a slice of sessions for Session Replay.
-    integrations: [Sentry.replayIntegration()],
+    // Capture a slice of sessions for Session Replay. Mask all text and block
+    // all media so replays never carry chat content or personal data to Sentry.
+    integrations: [Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true })],
 
-    // Adjust in production, or use tracesSampler for finer control.
-    tracesSampleRate: 1,
+    // Sample 10% of traces in production (full volume in dev for debugging).
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1,
 
     // Send logs to Sentry.
     enableLogs: true,
@@ -21,9 +22,9 @@ Sentry.init({
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
 
-    // Send user PII (IP, etc.). See:
+    // Don't attach user PII (IP, etc.) — private family chat. See:
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-    sendDefaultPii: true
+    sendDefaultPii: false
 });
 
 // Instruments client-side navigations for tracing.
