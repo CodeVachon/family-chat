@@ -25,7 +25,12 @@ type PreviewData = {
 function resolveMaybeRelative(value: string | undefined, base: string): string | null {
     if (!value) return null;
     try {
-        return new URL(value, base).href;
+        const url = new URL(value, base);
+        // Preview image/favicon URLs come from attacker-controlled OpenGraph tags
+        // and are rendered client-side as <img src>. Only allow https: so a
+        // viewer's browser never fetches data:/http:/other-scheme URLs (content
+        // injection, large-payload DoS, and cross-origin IP/tracking disclosure).
+        return url.protocol === "https:" ? url.href : null;
     } catch {
         return null;
     }
