@@ -42,6 +42,7 @@ const nextConfig: NextConfig = {
         "postgres",
         "cloudinary",
         "open-graph-scraper",
+        "undici",
         "web-push"
     ],
     experimental: {
