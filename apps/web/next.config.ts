@@ -53,7 +53,29 @@ const nextConfig: NextConfig = {
         remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }]
     },
     async headers() {
+        // Baseline, request-independent security headers for every route. The
+        // Content-Security-Policy is set per-request in proxy.ts (it carries a
+        // nonce), so it is intentionally not duplicated here.
+        const baseline = [
+            { key: "X-Content-Type-Options", value: "nosniff" },
+            { key: "X-Frame-Options", value: "DENY" },
+            { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+            {
+                key: "Permissions-Policy",
+                value: "camera=(), microphone=(), geolocation=(), browsing-topics=()"
+            },
+            // HSTS only in production — never pin localhost/dev to HTTPS.
+            ...(process.env.NODE_ENV === "production"
+                ? [
+                      {
+                          key: "Strict-Transport-Security",
+                          value: "max-age=63072000; includeSubDomains; preload"
+                      }
+                  ]
+                : [])
+        ];
         return [
+            { source: "/:path*", headers: baseline },
             {
                 // SSE must not be buffered by reverse proxies (nginx etc.)
                 source: "/api/stream",

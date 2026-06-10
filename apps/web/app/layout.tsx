@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Figtree, Merriweather } from "next/font/google";
+import { headers } from "next/headers";
 import { connection } from "next/server";
 
 import "@workspace/ui/globals.css";
@@ -35,11 +36,15 @@ const fontMono = Geist_Mono({
     variable: "--font-mono"
 });
 
-export default function RootLayout({
+export default async function RootLayout({
     children
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    // CSP nonce set by the proxy middleware; hand it to next-themes so its
+    // pre-paint inline theme script is allowed under the strict-dynamic policy.
+    const nonce = (await headers()).get("x-nonce") ?? undefined;
+
     return (
         <html
             data-component="RootLayout"
@@ -54,7 +59,7 @@ export default function RootLayout({
             )}
         >
             <body>
-                <ThemeProvider>{children}</ThemeProvider>
+                <ThemeProvider nonce={nonce}>{children}</ThemeProvider>
                 <Toaster />
                 <ServiceWorkerRegistrar />
             </body>
