@@ -37,7 +37,7 @@ export function UserMenu({
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted">
+            <DropdownMenuTrigger className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-muted">
                 <UserAvatar name={user.name} colorHue={user.colorHue} avatarUrl={user.avatarUrl} />
                 <div className="min-w-0 flex-1">
                     <UserName
