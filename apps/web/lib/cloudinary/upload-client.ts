@@ -82,7 +82,8 @@ export async function uploadToCloudinary(
         const err = (await signRes.json().catch(() => ({}))) as { error?: string };
         throw new Error(err.error ?? "Uploads are not available");
     }
-    const { signature, timestamp, apiKey, cloudName, folder } = await signRes.json();
+    const { signature, timestamp, apiKey, cloudName, folder, uniqueFilename } =
+        await signRes.json();
     const { kind, resourceType } = classify(file);
 
     const form = new FormData();
@@ -91,6 +92,8 @@ export async function uploadToCloudinary(
     form.append("timestamp", String(timestamp));
     form.append("signature", signature);
     form.append("folder", folder);
+    // Must match the signed param set exactly, or Cloudinary rejects the upload.
+    form.append("unique_filename", String(uniqueFilename));
 
     const res = await xhrUpload(
         `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
