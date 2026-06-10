@@ -122,8 +122,9 @@ export async function inviteUser(input: unknown) {
     });
     if (existing) throw new Error("A user with that email already exists");
 
+    const userId = crypto.randomUUID();
     await db.insert(userTable).values({
-        id: crypto.randomUUID(),
+        id: userId,
         name: data.name,
         email: data.email,
         emailVerified: true,
@@ -133,10 +134,18 @@ export async function inviteUser(input: unknown) {
         approvedByUserId: actor.id
     });
 
-    await auth.api.signInMagicLink({
-        body: { email: data.email, callbackURL: "/" },
-        headers: await headers()
-    });
+    // Send the invite atomically with creation: if the email fails, roll back the
+    // insert so we never leave an orphaned approved account that the admin thinks
+    // was never created (and that has no way to authenticate).
+    try {
+        await auth.api.signInMagicLink({
+            body: { email: data.email, callbackURL: "/" },
+            headers: await headers()
+        });
+    } catch (err) {
+        await db.delete(userTable).where(eq(userTable.id, userId));
+        throw err;
+    }
 
     revalidatePath("/admin/users");
     revalidatePath("/admin/approvals");
