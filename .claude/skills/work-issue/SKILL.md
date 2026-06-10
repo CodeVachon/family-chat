@@ -90,11 +90,17 @@ work happens in that directory** — `cd` into it.
 Run in the worktree, fix anything that fails:
 
 ```bash
-bun run format                  # Prettier — required by AGENTS.md
+bun run format                  # Prettier (whole repo) — required by AGENTS.md
+bun run format:check            # Prettier --check — mirrors the CI gate exactly
 bunx fallow audit --explain     # local gate; fix "fail" verdicts (fallow is a dev dep, run via bunx)
 bun run lint                    # ESLint across the workspace
 bun run typecheck               # tsc
 ```
+
+> `format`/`format:check` run Prettier over the **whole repo** (all extensions —
+> ts/tsx, md, json, css, yaml — respecting `.prettierignore`), matching the CI
+> Prettier step. Markdown/JSON/YAML-only changes are covered, so a docs-only PR
+> can't pass locally yet fail CI.
 
 `fallow` gates only findings **introduced** by this changeset (`gate=new-only`).
 Inherited findings on touched files are reported but non-blocking. Treat a JSON
@@ -176,13 +182,13 @@ release that includes this PR is published.
 
 ## Quick reference
 
-| Thing          | Value                                                                                   |
-| -------------- | --------------------------------------------------------------------------------------- |
-| Branch name    | Linear issue `gitBranchName` (e.g. `corglen/cod-23-…`)                                  |
-| Commit message | `COD-NN: <summary>`                                                                     |
-| PR title       | `COD-NN - <Issue Title>` (the `-` matters)                                              |
-| PR body link   | `Closes COD-NN`                                                                         |
-| Worktree path  | `../family-chat-worktrees/COD-NN`                                                       |
-| Linear states  | Todo → **In Progress** (start) → **In Review** (PR) → Done (release auto)               |
-| Local gates    | `bun run format` · `bunx fallow audit --explain` · `bun run lint` · `bun run typecheck` |
-| Code review    | `/code-review --fix` before commit/push; re-run gates after applying fixes              |
+| Thing          | Value                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Branch name    | Linear issue `gitBranchName` (e.g. `corglen/cod-23-…`)                                                           |
+| Commit message | `COD-NN: <summary>`                                                                                              |
+| PR title       | `COD-NN - <Issue Title>` (the `-` matters)                                                                       |
+| PR body link   | `Closes COD-NN`                                                                                                  |
+| Worktree path  | `../family-chat-worktrees/COD-NN`                                                                                |
+| Linear states  | Todo → **In Progress** (start) → **In Review** (PR) → Done (release auto)                                        |
+| Local gates    | `bun run format` · `bun run format:check` · `bunx fallow audit --explain` · `bun run lint` · `bun run typecheck` |
+| Code review    | `/code-review --fix` before commit/push; re-run gates after applying fixes                                       |

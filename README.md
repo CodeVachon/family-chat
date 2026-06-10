@@ -15,17 +15,17 @@ A private, self-hostable group chat for your people — a small, real-time messa
 
 ## Tech stack
 
-| Area        | Choice                                            |
-| ----------- | ------------------------------------------------- |
-| Framework   | Next.js 16 (App Router) + React 19                |
-| Language    | TypeScript                                        |
-| Styling/UI  | Tailwind CSS v4 + shadcn/ui (`@workspace/ui`)     |
-| Database    | PostgreSQL 17 + Drizzle ORM (`@workspace/db`)     |
-| Auth        | Better-Auth                                       |
-| Email       | Resend                                            |
-| Media       | Cloudinary                                        |
-| Editor      | Tiptap                                            |
-| Tooling     | Bun (package manager) + Turborepo monorepo        |
+| Area       | Choice                                        |
+| ---------- | --------------------------------------------- |
+| Framework  | Next.js 16 (App Router) + React 19            |
+| Language   | TypeScript                                    |
+| Styling/UI | Tailwind CSS v4 + shadcn/ui (`@workspace/ui`) |
+| Database   | PostgreSQL 17 + Drizzle ORM (`@workspace/db`) |
+| Auth       | Better-Auth                                   |
+| Email      | Resend                                        |
+| Media      | Cloudinary                                    |
+| Editor     | Tiptap                                        |
+| Tooling    | Bun (package manager) + Turborepo monorepo    |
 
 ## Repository layout
 
@@ -72,34 +72,34 @@ The **first account to sign up** automatically becomes the application Owner and
 
 Run from the repo root (Turbo fans these out across the workspace):
 
-| Command           | What it does                          |
-| ----------------- | ------------------------------------- |
-| `bun dev`         | Start the app in development          |
-| `bun run build`   | Production build                      |
-| `bun run lint`    | Lint                                  |
-| `bun run format`  | Format with Prettier                  |
-| `bun run typecheck` | Type-check the whole monorepo       |
+| Command             | What it does                  |
+| ------------------- | ----------------------------- |
+| `bun dev`           | Start the app in development  |
+| `bun run build`     | Production build              |
+| `bun run lint`      | Lint                          |
+| `bun run format`    | Format with Prettier          |
+| `bun run typecheck` | Type-check the whole monorepo |
 
 Database commands (run inside `packages/db`, e.g. `bun --cwd packages/db run db:studio`):
 
-| Command        | What it does                                  |
-| -------------- | --------------------------------------------- |
-| `db:generate`  | Generate a migration from schema changes      |
-| `db:migrate`   | Apply pending migrations                      |
-| `db:push`      | Push the schema directly (dev convenience)    |
-| `db:studio`    | Open Drizzle Studio                           |
+| Command       | What it does                               |
+| ------------- | ------------------------------------------ |
+| `db:generate` | Generate a migration from schema changes   |
+| `db:migrate`  | Apply pending migrations                   |
+| `db:push`     | Push the schema directly (dev convenience) |
+| `db:studio`   | Open Drizzle Studio                        |
 
 ## Configuration
 
 All configuration is read from the environment at runtime — see `.env.example` for the full list. Highlights:
 
-| Variable                | Purpose                                                            |
-| ----------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`          | Postgres connection string                                         |
-| `BETTER_AUTH_SECRET`    | Auth signing secret — generate with `openssl rand -base64 32`      |
-| `BETTER_AUTH_URL`       | Public base URL of the app                                         |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Transactional email + magic links                          |
-| `CLOUDINARY_*`          | Media uploads                                                      |
+| Variable                                                 | Purpose                                                          |
+| -------------------------------------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`                                           | Postgres connection string                                       |
+| `BETTER_AUTH_SECRET`                                     | Auth signing secret — generate with `openssl rand -base64 32`    |
+| `BETTER_AUTH_URL`                                        | Public base URL of the app                                       |
+| `RESEND_API_KEY`, `EMAIL_FROM`                           | Transactional email + magic links                                |
+| `CLOUDINARY_*`                                           | Media uploads                                                    |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push — generate keys with `npx web-push generate-vapid-keys` |
 
 ## Running with Docker
