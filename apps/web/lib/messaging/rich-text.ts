@@ -102,6 +102,24 @@ export function extractMentionIds(doc: unknown): string[] {
     return [...ids];
 }
 
+/**
+ * Collect the user ids actually `@`-mentioned in a sanitized HTML body — the
+ * `data-id` of each `<span data-type="mention">`. Used to reject client-supplied
+ * mention ids that don't correspond to a visible mention (notification spam).
+ */
+export function extractMentionIdsFromHtml(html: string): string[] {
+    const ids = new Set<string>();
+    const spanRe = /<span\b([^>]*)>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = spanRe.exec(html)) !== null) {
+        const attrs = match[1] ?? "";
+        if (!/data-type\s*=\s*"mention"/i.test(attrs)) continue;
+        const id = /data-id\s*=\s*"([^"]*)"/i.exec(attrs)?.[1];
+        if (id) ids.add(id);
+    }
+    return [...ids];
+}
+
 export type MentionHue = { id: string; colorHue: number };
 
 /**

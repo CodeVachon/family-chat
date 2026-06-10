@@ -9,7 +9,11 @@ import { attachments, channelMembers, mentions, messages } from "@workspace/db/s
 import { isValidAttachmentUrl } from "@/lib/cloudinary/server";
 import { authorizeChannel } from "@/lib/dal";
 import { ensureMessageLinkPreviews } from "@/lib/messaging/link-preview";
-import { htmlToText, sanitizeMessageHtml } from "@/lib/messaging/rich-text";
+import {
+    extractMentionIdsFromHtml,
+    htmlToText,
+    sanitizeMessageHtml
+} from "@/lib/messaging/rich-text";
 import { canInChannel } from "@/lib/permissions";
 import { pushForNewMessage } from "@/lib/push/notify";
 import { editMessageSchema, postMessageSchema } from "@/lib/validation/channel";
@@ -55,7 +59,13 @@ export async function postMessage(input: unknown) {
         if (root.threadRootId) throw new Error("Cannot reply to a reply");
     }
 
-    const mentionIds = await memberIdsIn(data.channelId, data.mentionUserIds);
+    // Only honor mention ids that are actually @-mentioned in the body, so a
+    // client can't push-spam members it didn't visibly mention.
+    const inBody = new Set(extractMentionIdsFromHtml(body));
+    const mentionIds = await memberIdsIn(
+        data.channelId,
+        data.mentionUserIds.filter((id) => inBody.has(id))
+    );
 
     const messageId = await db.transaction(async (tx) => {
         const [message] = await tx
@@ -123,7 +133,11 @@ export async function editMessage(input: unknown) {
     const body = sanitizeMessageHtml(data.body.trim());
     if (htmlToText(body).length === 0) throw new Error("Message cannot be empty");
 
-    const mentionIds = await memberIdsIn(message.channelId, data.mentionUserIds);
+    const inBody = new Set(extractMentionIdsFromHtml(body));
+    const mentionIds = await memberIdsIn(
+        message.channelId,
+        data.mentionUserIds.filter((id) => inBody.has(id))
+    );
 
     await db.transaction(async (tx) => {
         await tx
