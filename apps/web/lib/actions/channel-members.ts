@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@workspace/db/client";
-import { channelMembers } from "@workspace/db/schema";
+import { channelMembers, user } from "@workspace/db/schema";
 
 import { authorizeChannel } from "@/lib/dal";
 import { channelMemberRoleSchema } from "@/lib/validation/channel";
@@ -32,6 +32,17 @@ export async function addChannelMember(formData: FormData) {
 
     const userId = requireField(formData, "userId");
     const role = channelMemberRoleSchema.parse(formData.get("role") ?? "user");
+
+    // Only add real, approved users. A pending/rejected/stale id would otherwise
+    // appear in member lists and mention targets and — if later approved —
+    // silently gain access that was granted while it was not approved.
+    const target = await db.query.user.findFirst({
+        where: eq(user.id, userId),
+        columns: { approvalStatus: true }
+    });
+    if (!target || target.approvalStatus !== "approved") {
+        throw new Error("User must be an approved member");
+    }
 
     await db.insert(channelMembers).values({ channelId, userId, role }).onConflictDoNothing();
 
