@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@workspace/db/client";
 import { attachments, channelMembers, mentions, messages } from "@workspace/db/schema";
 
+import { isValidAttachmentUrl } from "@/lib/cloudinary/server";
 import { authorizeChannel } from "@/lib/dal";
 import { ensureMessageLinkPreviews } from "@/lib/messaging/link-preview";
 import { htmlToText, sanitizeMessageHtml } from "@/lib/messaging/rich-text";
@@ -34,6 +35,15 @@ export async function postMessage(input: unknown) {
     const body = sanitizeMessageHtml(data.body.trim());
     if (htmlToText(body).length === 0 && data.attachments.length === 0) {
         throw new Error("Message cannot be empty");
+    }
+
+    // Attachment URLs are client-supplied; confirm each is a genuine Cloudinary
+    // delivery URL for our cloud before persisting (prevents stored XSS /
+    // content injection via secureUrl).
+    for (const attachment of data.attachments) {
+        if (!isValidAttachmentUrl(attachment.secureUrl, attachment.publicId)) {
+            throw new Error("Invalid attachment");
+        }
     }
 
     if (data.threadRootId) {
