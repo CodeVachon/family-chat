@@ -31,14 +31,16 @@ Before finishing any task that touches code, run `bun run format` (or `bunx pret
 We use **Linear** as our issue tracker. Use the Linear MCP server (`linear-server`) for all issue work — do not invent a different tracker or store issues in the repo.
 
 - **Project**: all issues for this repository belong to the **Family Chat** project (team `CodeVachon`). Always set `project: "Family Chat"` when creating an issue, and file every new issue into that project.
-- **Find the work**: look up issues by their identifier (e.g. `FAM-123`) when the user references one, or search/list issues to find what to do next.
+- **Find the work**: look up issues by their identifier (e.g. `COD-123`) when the user references one, or search/list issues to find what to do next.
 - **Before starting**: read the full issue (description, comments, acceptance criteria) and move it to _In Progress_.
-- **While working**: reference the issue identifier in branch names and commit messages (e.g. `FAM-123: ...`) so changes link back to Linear.
-- **Opening a PR**: title it `<ISSUE_KEY> - <ISSUE_TITLE>` (e.g. `FAM-123 - Add Docker container`). This is what the release-notes → Linear automation reads to move issues to _Done_ on release, so the key must be in the title.
+- **While working**: reference the issue identifier in branch names and commit messages (e.g. `COD-123: ...`) so changes link back to Linear.
+- **Opening a PR**: title it `<ISSUE_KEY> - <ISSUE_TITLE>` (e.g. `COD-123 - Add Docker container`). This is what the release-notes → Linear automation reads to move issues to _Done_ on release, so the key must be in the title.
 - **When done**: leave a brief comment summarizing what changed and move the issue to the appropriate state (_In Review_ on opening a PR, _Done_ when merged).
 - **New work surfaced mid-task** (a bug, follow-up, or scope you won't finish now): create a Linear issue for it rather than leaving it untracked.
 
 If the Linear MCP isn't connected, ask the user to enable/authenticate it rather than falling back to another system.
+
+For the full step-by-step loop (pick issue → isolated worktree → quality gates → PR → _In Review_), use the **`work-issue`** skill in `.claude/skills/work-issue/`.
 
 ---
 
