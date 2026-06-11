@@ -100,6 +100,18 @@ export async function ProfilePanel({
                             </div>
                         )}
 
+                        {profile.email && (
+                            <div className="text-sm">
+                                <span className="text-muted-foreground">Email: </span>
+                                <a
+                                    href={`mailto:${profile.email}`}
+                                    className="break-all hover:underline"
+                                >
+                                    {profile.email}
+                                </a>
+                            </div>
+                        )}
+
                         {profile.channels.length > 0 && (
                             <div className="flex flex-col gap-2">
                                 <h3 className="text-xs font-medium text-muted-foreground uppercase">
