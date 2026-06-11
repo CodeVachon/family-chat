@@ -123,15 +123,22 @@ export function MessageItem({
                 message.mentionsMe && !deleted && "bg-amber-400/10"
             )}
         >
-            <UserAvatar
-                name={name}
-                colorHue={hue}
-                avatarUrl={prefs?.avatarUrl}
-                className="mt-0.5 size-9"
-            />
+            <Link href={`?profile=${message.authorUserId}`} className="mt-0.5 shrink-0">
+                <UserAvatar
+                    name={name}
+                    colorHue={hue}
+                    avatarUrl={prefs?.avatarUrl}
+                    className="size-9"
+                />
+            </Link>
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                    <UserName name={name} colorHue={hue} className="text-sm" />
+                    <Link
+                        href={`?profile=${message.authorUserId}`}
+                        className="rounded-sm hover:underline"
+                    >
+                        <UserName name={name} colorHue={hue} className="text-sm" />
+                    </Link>
                     <Timestamp date={message.createdAt} className="text-xs text-muted-foreground" />
                     {message.editedAt && !deleted && (
                         <span className="text-xs text-muted-foreground">(edited)</span>

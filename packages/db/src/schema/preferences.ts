@@ -24,6 +24,10 @@ export const userPreferences = pgTable("user_preferences", {
     fontSizeScale: text("font_size_scale").notNull().default("default"),
     fontFamily: text("font_family").notNull().default("figtree"),
     avatarUrl: text("avatar_url"),
+    // Public profile fields (shown in the profile side panel).
+    bio: text("bio"),
+    phone: text("phone"),
+    bannerUrl: text("banner_url"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow()
 });

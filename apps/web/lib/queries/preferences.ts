@@ -23,6 +23,9 @@ export type ResolvedPreferences = {
     fontSizeScale: FontSizeScale;
     fontFamily: FontFamily;
     avatarUrl: string | null;
+    bio: string | null;
+    phone: string | null;
+    bannerUrl: string | null;
 };
 
 /**
@@ -30,18 +33,40 @@ export type ResolvedPreferences = {
  * Memoized per render pass so the root layout (which sets FOUC-free font
  * attributes on <html>) and the app layout share a single query.
  */
+const DEFAULT_PREFERENCES: ResolvedPreferences = {
+    displayName: null,
+    dateTimeFormat: "relative",
+    themePreference: "system",
+    notificationLevel: "mentions",
+    colorHue: 220,
+    fontSizeScale: "default",
+    fontFamily: "figtree",
+    avatarUrl: null,
+    bio: null,
+    phone: null,
+    bannerUrl: null
+};
+
 export const getUserPreferences = cache(async (userId: string): Promise<ResolvedPreferences> => {
     const row = await db.query.userPreferences.findFirst({
         where: eq(userPreferences.userId, userId)
     });
+    if (!row) return DEFAULT_PREFERENCES;
+
+    // notNull columns are guaranteed present once a row exists; nullable columns
+    // already carry the intended null. So no per-field fallback is needed — the
+    // enum-typed columns just need a cast back to their unions.
     return {
-        displayName: row?.displayName ?? null,
-        dateTimeFormat: (row?.dateTimeFormat as DateTimeFormat) ?? "relative",
-        themePreference: (row?.themePreference as ThemeOption) ?? "system",
-        notificationLevel: (row?.notificationLevel as NotificationLevel) ?? "mentions",
-        colorHue: row?.colorHue ?? 220,
-        fontSizeScale: (row?.fontSizeScale as FontSizeScale) ?? "default",
-        fontFamily: (row?.fontFamily as FontFamily) ?? "figtree",
-        avatarUrl: row?.avatarUrl ?? null
+        displayName: row.displayName,
+        dateTimeFormat: row.dateTimeFormat as DateTimeFormat,
+        themePreference: row.themePreference as ThemeOption,
+        notificationLevel: row.notificationLevel as NotificationLevel,
+        colorHue: row.colorHue,
+        fontSizeScale: row.fontSizeScale as FontSizeScale,
+        fontFamily: row.fontFamily as FontFamily,
+        avatarUrl: row.avatarUrl,
+        bio: row.bio,
+        phone: row.phone,
+        bannerUrl: row.bannerUrl
     };
 });

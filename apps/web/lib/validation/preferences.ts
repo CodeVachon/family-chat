@@ -19,15 +19,22 @@ export const notificationPrefsSchema = z.object({
     notificationLevel: z.enum(NOTIFICATION_LEVELS)
 });
 
-export const profilePrefsSchema = z.object({
-    displayName: z
+/** Trim, then collapse empty strings to null. */
+const optionalText = (max: number) =>
+    z
         .string()
         .trim()
-        .max(50)
+        .max(max)
         .nullable()
-        .transform((v) => (v && v.length > 0 ? v : null)),
+        .transform((v) => (v && v.length > 0 ? v : null));
+
+export const profilePrefsSchema = z.object({
+    displayName: optionalText(50),
     colorHue: z.number().int().min(0).max(360),
-    avatarUrl: z.string().url().nullable()
+    avatarUrl: z.string().url().nullable(),
+    bio: optionalText(280).default(null),
+    phone: optionalText(30).default(null),
+    bannerUrl: z.string().url().nullable().default(null)
 });
 
 export const appearancePrefsSchema = z.object({
