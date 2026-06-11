@@ -5,6 +5,8 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db/client";
 import { appSettings, channelMembers, channels, user } from "@workspace/db/schema";
 
+import { insertSystemMessage } from "@/lib/messaging/system-messages";
+
 /**
  * Add a user to every configured default channel. Called when a user gains
  * access for the first time (on approval). Defensive on every front:
@@ -41,10 +43,26 @@ export async function joinDefaultChannels(userId: string): Promise<void> {
     }
     if (valid.length === 0) return;
 
-    await db
-        .insert(channelMembers)
-        .values(valid.map((c) => ({ channelId: c.id, userId, role: "user" as const })))
-        .onConflictDoNothing();
+    await db.transaction(async (tx) => {
+        // `returning()` tells us which memberships were actually created (vs.
+        // conflict no-ops on re-approval), so we announce a join only for real
+        // new joins — never a duplicate.
+        const inserted = await tx
+            .insert(channelMembers)
+            .values(valid.map((c) => ({ channelId: c.id, userId, role: "user" as const })))
+            .onConflictDoNothing()
+            .returning({ channelId: channelMembers.channelId });
+
+        for (const row of inserted) {
+            // Auto-join: the user is both subject and actor → "X joined the channel".
+            await insertSystemMessage(tx, {
+                channelId: row.channelId,
+                event: "join",
+                subjectUserId: userId,
+                actorUserId: userId
+            });
+        }
+    });
 }
 
 /**
@@ -87,6 +105,14 @@ export async function bootstrapFirstRun(ownerUserId: string): Promise<void> {
             .insert(channelMembers)
             .values({ channelId: general!.id, userId: ownerUserId, role: "owner" })
             .onConflictDoNothing();
+
+        // Announce the owner's join, consistent with every other join path.
+        await insertSystemMessage(tx, {
+            channelId: general!.id,
+            event: "join",
+            subjectUserId: ownerUserId,
+            actorUserId: ownerUserId
+        });
 
         await tx
             .insert(appSettings)
