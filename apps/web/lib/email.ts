@@ -60,6 +60,21 @@ export function verificationEmail(url: string, appName: string): { subject: stri
     };
 }
 
+export function changeEmailConfirmationEmail(
+    url: string,
+    appName: string,
+    newEmail: string
+): { subject: string; html: string } {
+    return {
+        subject: `Confirm your ${appName} email change`,
+        html: `
+            <p>We received a request to change your ${appName} email address to <strong>${newEmail}</strong>.</p>
+            <p><a href="${url}">Confirm email change</a></p>
+            <p>If you didn't request this, you can ignore this email — your address won't change.</p>
+        `
+    };
+}
+
 export function resetPasswordEmail(
     url: string,
     appName: string
