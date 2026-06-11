@@ -59,3 +59,17 @@ export function verificationEmail(url: string, appName: string): { subject: stri
         `
     };
 }
+
+export function resetPasswordEmail(
+    url: string,
+    appName: string
+): { subject: string; html: string } {
+    return {
+        subject: `Reset your ${appName} password`,
+        html: `
+            <p>We received a request to reset your ${appName} password. Click the link below to choose a new one:</p>
+            <p><a href="${url}">Reset password</a></p>
+            <p>This link expires shortly. If you didn't request a password reset, you can ignore this email.</p>
+        `
+    };
+}

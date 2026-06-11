@@ -57,7 +57,7 @@ function SidebarContents({
                 </div>
             </ScrollArea>
 
-            <div className="border-t p-2">
+            <div className="border-t" data-component="Sidebar-User-Menu">
                 <UserMenu
                     user={{
                         name: user.name,

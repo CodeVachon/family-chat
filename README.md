@@ -15,17 +15,17 @@ A private, self-hostable group chat for your people — a small, real-time messa
 
 ## Tech stack
 
-| Area        | Choice                                            |
-| ----------- | ------------------------------------------------- |
-| Framework   | Next.js 16 (App Router) + React 19                |
-| Language    | TypeScript                                        |
-| Styling/UI  | Tailwind CSS v4 + shadcn/ui (`@workspace/ui`)     |
-| Database    | PostgreSQL 17 + Drizzle ORM (`@workspace/db`)     |
-| Auth        | Better-Auth                                       |
-| Email       | Resend                                            |
-| Media       | Cloudinary                                        |
-| Editor      | Tiptap                                            |
-| Tooling     | Bun (package manager) + Turborepo monorepo        |
+| Area       | Choice                                        |
+| ---------- | --------------------------------------------- |
+| Framework  | Next.js 16 (App Router) + React 19            |
+| Language   | TypeScript                                    |
+| Styling/UI | Tailwind CSS v4 + shadcn/ui (`@workspace/ui`) |
+| Database   | PostgreSQL 17 + Drizzle ORM (`@workspace/db`) |
+| Auth       | Better-Auth                                   |
+| Email      | Resend                                        |
+| Media      | Cloudinary                                    |
+| Editor     | Tiptap                                        |
+| Tooling    | Bun (package manager) + Turborepo monorepo    |
 
 ## Repository layout
 
@@ -72,35 +72,53 @@ The **first account to sign up** automatically becomes the application Owner and
 
 Run from the repo root (Turbo fans these out across the workspace):
 
-| Command           | What it does                          |
-| ----------------- | ------------------------------------- |
-| `bun dev`         | Start the app in development          |
-| `bun run build`   | Production build                      |
-| `bun run lint`    | Lint                                  |
-| `bun run format`  | Format with Prettier                  |
-| `bun run typecheck` | Type-check the whole monorepo       |
+| Command             | What it does                  |
+| ------------------- | ----------------------------- |
+| `bun dev`           | Start the app in development  |
+| `bun run build`     | Production build              |
+| `bun run lint`      | Lint                          |
+| `bun run format`    | Format with Prettier          |
+| `bun run typecheck` | Type-check the whole monorepo |
 
 Database commands (run inside `packages/db`, e.g. `bun --cwd packages/db run db:studio`):
 
-| Command        | What it does                                  |
-| -------------- | --------------------------------------------- |
-| `db:generate`  | Generate a migration from schema changes      |
-| `db:migrate`   | Apply pending migrations                      |
-| `db:push`      | Push the schema directly (dev convenience)    |
-| `db:studio`    | Open Drizzle Studio                           |
+| Command       | What it does                               |
+| ------------- | ------------------------------------------ |
+| `db:generate` | Generate a migration from schema changes   |
+| `db:migrate`  | Apply pending migrations                   |
+| `db:push`     | Push the schema directly (dev convenience) |
+| `db:studio`   | Open Drizzle Studio                        |
 
 ## Configuration
 
 All configuration is read from the environment at runtime — see `.env.example` for the full list. Highlights:
 
-| Variable                | Purpose                                                            |
-| ----------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`          | Postgres connection string                                         |
-| `BETTER_AUTH_SECRET`    | Auth signing secret — generate with `openssl rand -base64 32`      |
-| `BETTER_AUTH_URL`       | Public base URL of the app                                         |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Transactional email + magic links                          |
-| `CLOUDINARY_*`          | Media uploads                                                      |
+| Variable                                                 | Purpose                                                          |
+| -------------------------------------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`                                           | Postgres connection string                                       |
+| `BETTER_AUTH_SECRET`                                     | Auth signing secret — generate with `openssl rand -base64 32`    |
+| `BETTER_AUTH_URL`                                        | Public base URL of the app                                       |
+| `RESEND_API_KEY`, `EMAIL_FROM`                           | Transactional email + magic links                                |
+| `CLOUDINARY_*`                                           | Media uploads                                                    |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push — generate keys with `npx web-push generate-vapid-keys` |
+
+### Secrets & credentials
+
+`.env` is gitignored (only `.env.example` is tracked) and the image bakes in no
+secrets, so credentials never reach version control or a published image. They
+**do** live in plaintext in your local `.env`, so:
+
+- Treat the local `.env` as sensitive — don't commit it, paste it, or copy it
+  into a shared machine, backup, or image layer.
+- **Rotate any real credentials before sharing the machine or an image**, and
+  rotate immediately if a key may have leaked. The third-party secrets here are
+  the Resend API key (`RESEND_API_KEY`), the Cloudinary API secret
+  (`CLOUDINARY_API_SECRET`), the VAPID private key (`VAPID_PRIVATE_KEY`), and the
+  Sentry auth token (`SENTRY_AUTH_TOKEN`). Each is rotated from its own
+  provider dashboard.
+- `SENTRY_AUTH_TOKEN` can modify the Sentry org, so prefer a credential manager
+  (e.g. 1Password's `op run`, `direnv` + the OS keychain, or your CI's secret
+  store) over a flat file — and scope the token to source-map upload only.
 
 ## Running with Docker
 

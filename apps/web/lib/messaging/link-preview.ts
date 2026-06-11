@@ -6,12 +6,12 @@ import ogs from "open-graph-scraper";
 import { db } from "@workspace/db/client";
 import { linkPreviews, messages } from "@workspace/db/schema";
 
-import { isSafeUrl } from "@/lib/security/ssrf";
+import { isSafeUrl, ssrfSafeDispatcher } from "@/lib/security/ssrf";
 import { extractUrls } from "./links";
 
 const OK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const FAIL_TTL_MS = 24 * 60 * 60 * 1000;
-const FETCH_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_SECONDS = 5;
 
 type PreviewData = {
     title: string | null;
@@ -25,7 +25,12 @@ type PreviewData = {
 function resolveMaybeRelative(value: string | undefined, base: string): string | null {
     if (!value) return null;
     try {
-        return new URL(value, base).href;
+        const url = new URL(value, base);
+        // Preview image/favicon URLs come from attacker-controlled OpenGraph tags
+        // and are rendered client-side as <img src>. Only allow https: so a
+        // viewer's browser never fetches data:/http:/other-scheme URLs (content
+        // injection, large-payload DoS, and cross-origin IP/tracking disclosure).
+        return url.protocol === "https:" ? url.href : null;
     } catch {
         return null;
     }
@@ -34,7 +39,13 @@ function resolveMaybeRelative(value: string | undefined, base: string): string |
 async function fetchPreview(url: string): Promise<PreviewData | null> {
     if (!(await isSafeUrl(url))) return null;
     try {
-        const { error, result } = await ogs({ url, timeout: FETCH_TIMEOUT_MS });
+        // ogs `timeout` is in seconds. Route the fetch through the SSRF-safe
+        // dispatcher so every connection (incl. redirects) re-validates the IP.
+        const { error, result } = await ogs({
+            url,
+            timeout: FETCH_TIMEOUT_SECONDS,
+            fetchOptions: { dispatcher: ssrfSafeDispatcher }
+        });
         if (error || !result.success) return null;
         return {
             title: result.ogTitle ?? result.twitterTitle ?? null,

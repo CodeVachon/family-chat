@@ -8,7 +8,6 @@
     "build": "next build",
     "start": "next start --port 5766",
     "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,6 +25,7 @@
     "cloudinary": "^2.7.0",
     "drizzle-orm": "^0.44.6",
     "frimousse": "^0.3.0",
+    "ipaddr.js": "^1.9.1",
     "isomorphic-dompurify": "^3.16.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.6",
@@ -36,6 +36,7 @@
     "react-dom": "19.2.4",
     "resend": "^4.6.0",
     "sonner": "^2.0.0",
+    "undici": "^7.16.0",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },

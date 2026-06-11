@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@workspace/db/client";
 import {
@@ -156,12 +156,46 @@ export async function getChannel(channelId: string) {
     return db.query.channels.findFirst({ where: eq(channels.id, channelId) });
 }
 
-/** Top-level channel messages (no thread replies) in chronological order. */
-export async function listChannelMessages(channelId: string, userId: string, limit = 200) {
-    const rows = await queryMessages(
-        and(eq(messages.channelId, channelId), isNull(messages.threadRootId)),
-        limit
-    );
+/** How many top-level messages one page (initial load or "load older") returns. */
+export const CHANNEL_PAGE_SIZE = 50;
+
+/** A point in the message stream to page backwards from (keyset cursor). */
+export type MessageCursor = { id: string; createdAt: Date };
+
+/**
+ * Top-level channel messages (no thread replies) in chronological order. Returns
+ * the most recent `limit` messages, or — when a `before` cursor is given — the
+ * `limit` messages immediately older than it (keyset pagination on
+ * createdAt+id), so history is fully navigable rather than capped at one page.
+ */
+export async function listChannelMessages(
+    channelId: string,
+    userId: string,
+    opts: { limit?: number; before?: MessageCursor } = {}
+) {
+    const limit = opts.limit ?? CHANNEL_PAGE_SIZE;
+    const before = opts.before;
+
+    // Page backwards from the cursor. The cursor's createdAt is a JS Date
+    // (millisecond precision) while the column is microsecond precision, so we
+    // use an exclusive *next-millisecond* ceiling: this never skips a row that
+    // shares the cursor's millisecond but has extra microseconds. It may re-fetch
+    // rows already shown in that millisecond — the client dedupes by id — but it
+    // can never leave a gap. Fetched newest-first, then reversed to chronological
+    // order for display.
+    const ceiling = before ? new Date(before.createdAt.getTime() + 1) : null;
+    const rows = (
+        await db.query.messages.findMany({
+            where: and(
+                eq(messages.channelId, channelId),
+                isNull(messages.threadRootId),
+                ceiling ? lt(messages.createdAt, ceiling) : undefined
+            ),
+            orderBy: [desc(messages.createdAt), desc(messages.id)],
+            limit,
+            with: messageWith
+        })
+    ).reverse();
 
     const decorated = await decorateMessages(rows, userId);
 

@@ -109,4 +109,9 @@ USER nextjs
 
 EXPOSE 5766
 
+# Confirm the Next server is actually serving (not merely that the process is
+# up) by hitting the unauthenticated /api/health route. Node 22 has global fetch.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ["node", "-e", "fetch('http://127.0.0.1:5766/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
 CMD ["node", "apps/web/server.js"]

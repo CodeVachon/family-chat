@@ -8,7 +8,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { count, eq } from "drizzle-orm";
 
-import { magicLinkEmail, sendEmail, verificationEmail } from "./email";
+import { magicLinkEmail, resetPasswordEmail, sendEmail, verificationEmail } from "./email";
 
 /** Current application name (for email branding), falling back to the default. */
 async function appName(): Promise<string> {
@@ -38,7 +38,7 @@ export const auth = betterAuth({
         requireEmailVerification: false,
         sendResetPassword: async ({ user, url }) => {
             const name = await appName();
-            const { subject, html } = verificationEmail(url, name);
+            const { subject, html } = resetPasswordEmail(url, name);
             await sendEmail({ to: user.email, subject, html, fromName: name });
         }
     },
@@ -107,6 +107,12 @@ export const auth = betterAuth({
 
     plugins: [
         magicLink({
+            // Signup flows through /signup + admin approval, so magic links must
+            // only authenticate existing accounts. Without this, anyone could make
+            // our domain email arbitrary addresses and accrue unsolicited pending
+            // user rows (email-bombing / enumeration). Rate-limit the endpoint too.
+            disableSignUp: true,
+            rateLimit: { window: 60, max: 5 },
             sendMagicLink: async ({ email, url }) => {
                 const name = await appName();
                 const { subject, html } = magicLinkEmail(url, name);

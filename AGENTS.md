@@ -22,7 +22,7 @@ Audit defaults to `gate=new-only`: only findings introduced by the current chang
 
 ## Formatting
 
-Before finishing any task that touches code, run `bun run format` (or `bunx prettier --write` on the files you changed) so everything is formatted with Prettier. Do not consider a task complete until the changed files pass Prettier.
+Before finishing any task that touches code, run `bun run format` so everything is formatted with Prettier. It formats the whole repo across all supported file types (ts/tsx, md, json, css, yaml — respecting `.prettierignore`), matching the CI Prettier check; `bun run format:check` is the read-only equivalent. Do not consider a task complete until the changed files pass Prettier.
 
 ---
 
