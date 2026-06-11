@@ -9,8 +9,22 @@ import { db } from "@workspace/db/client";
 import { user as userTable, verification } from "@workspace/db/schema";
 
 import { auth } from "@/lib/auth";
+import { joinDefaultChannels } from "@/lib/channels/default-channels";
 import { requireApprovedUser } from "@/lib/dal";
 import { canApp, type AppAction } from "@/lib/permissions";
+
+/**
+ * Auto-join the default channels, best-effort. The approval/invite has already
+ * committed by the time this runs and the join is idempotent, so a failure here
+ * must not fail the whole action (and re-approving safely retries).
+ */
+async function joinDefaultChannelsBestEffort(userId: string) {
+    try {
+        await joinDefaultChannels(userId);
+    } catch (err) {
+        console.error("[admin] default-channel auto-join failed", err);
+    }
+}
 
 function getUserId(formData: FormData): string {
     const id = formData.get("userId");
@@ -55,6 +69,11 @@ export async function approveUser(formData: FormData) {
                 updatedAt: new Date()
             })
             .where(eq(userTable.id, targetUserId));
+
+        // Newly approved users auto-join the configured default channels. The
+        // membership inserts emit channels.changed, so the user's SSE fan-out
+        // scope is re-resolved without a manual reconnect.
+        await joinDefaultChannelsBestEffort(targetUserId);
     });
 }
 
@@ -159,6 +178,10 @@ export async function inviteUser(input: unknown) {
         }
         throw err;
     }
+
+    // Invited users are created already-approved, so they bypass approveUser —
+    // auto-join the default channels here too.
+    await joinDefaultChannelsBestEffort(userId);
 
     revalidatePath("/admin/users");
     revalidatePath("/admin/approvals");

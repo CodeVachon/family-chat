@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ADD COLUMN "default_channel_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL;

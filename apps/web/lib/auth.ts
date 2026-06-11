@@ -8,6 +8,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { count, eq } from "drizzle-orm";
 
+import { bootstrapFirstRun } from "./channels/default-channels";
 import { magicLinkEmail, resetPasswordEmail, sendEmail, verificationEmail } from "./email";
 
 /** Current application name (for email branding), falling back to the default. */
@@ -100,6 +101,19 @@ export const auth = betterAuth({
                     }
 
                     return { data: user };
+                },
+                // After the first user (the Owner) exists, seed the default
+                // "General" channel. bootstrapFirstRun self-gates (owner role,
+                // zero channels), so this is a no-op for every later signup.
+                // Best-effort: this runs after the signup transaction has
+                // committed, so a failure here must not turn a successful signup
+                // into a 500 — log and move on.
+                after: async (user) => {
+                    try {
+                        await bootstrapFirstRun(user.id);
+                    } catch (err) {
+                        console.error("[auth] first-run channel bootstrap failed", err);
+                    }
                 }
             }
         }
