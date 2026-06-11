@@ -8,6 +8,7 @@ import { db } from "@workspace/db/client";
 import { channelMembers, channels } from "@workspace/db/schema";
 
 import { authorizeChannel, requireApprovedUser } from "@/lib/dal";
+import { insertSystemMessage } from "@/lib/messaging/system-messages";
 import { canApp } from "@/lib/permissions";
 import { channelFormSchema } from "@/lib/validation/channel";
 
@@ -117,10 +118,22 @@ export async function joinChannel(formData: FormData) {
     if (!channel) throw new Error("Channel not found");
     if (channel.isPrivate) throw new Error("Cannot join a private channel");
 
-    await db
-        .insert(channelMembers)
-        .values({ channelId, userId: actor.id, role: "user" })
-        .onConflictDoNothing();
+    await db.transaction(async (tx) => {
+        const inserted = await tx
+            .insert(channelMembers)
+            .values({ channelId, userId: actor.id, role: "user" })
+            .onConflictDoNothing()
+            .returning({ id: channelMembers.id });
+        // Self-join: actor and subject are the same user.
+        if (inserted.length > 0) {
+            await insertSystemMessage(tx, {
+                channelId,
+                event: "join",
+                subjectUserId: actor.id,
+                actorUserId: actor.id
+            });
+        }
+    });
 
     revalidatePath("/channels");
     revalidatePath(`/channels/${channelId}`);
@@ -137,9 +150,23 @@ export async function leaveChannel(formData: FormData) {
         throw new Error("The channel owner cannot leave; transfer ownership or delete it");
     }
 
-    await db
-        .delete(channelMembers)
-        .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id)));
+    await db.transaction(async (tx) => {
+        const removed = await tx
+            .delete(channelMembers)
+            .where(
+                and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id))
+            )
+            .returning({ id: channelMembers.id });
+        // Self-leave: actor and subject are the same user.
+        if (removed.length > 0) {
+            await insertSystemMessage(tx, {
+                channelId,
+                event: "leave",
+                subjectUserId: actor.id,
+                actorUserId: actor.id
+            });
+        }
+    });
 
     revalidatePath("/channels");
     revalidatePath(`/channels/${channelId}`);

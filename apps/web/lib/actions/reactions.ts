@@ -16,9 +16,11 @@ export async function toggleReaction(messageId: string, emoji: string) {
 
     const message = await db.query.messages.findFirst({
         where: eq(messages.id, messageId),
-        columns: { channelId: true, deletedAt: true }
+        columns: { channelId: true, deletedAt: true, type: true }
     });
     if (!message || message.deletedAt) return;
+    // System announcements (join/leave) are not reactable.
+    if (message.type === "system") return;
 
     const { user } = await authorizeChannel(message.channelId, "channel:post");
 

@@ -7,6 +7,7 @@ import { db } from "@workspace/db/client";
 import { channelMembers, user } from "@workspace/db/schema";
 
 import { authorizeChannel } from "@/lib/dal";
+import { insertSystemMessage } from "@/lib/messaging/system-messages";
 import { channelMemberRoleSchema } from "@/lib/validation/channel";
 
 function requireField(formData: FormData, key: string): string {
@@ -28,7 +29,7 @@ async function assertTargetNotOwner(channelId: string, userId: string) {
 
 export async function addChannelMember(formData: FormData) {
     const channelId = requireField(formData, "channelId");
-    await authorizeChannel(channelId, "channel:manage_members");
+    const { user: actor } = await authorizeChannel(channelId, "channel:manage_members");
 
     const userId = requireField(formData, "userId");
     const role = channelMemberRoleSchema.parse(formData.get("role") ?? "user");
@@ -44,7 +45,22 @@ export async function addChannelMember(formData: FormData) {
         throw new Error("User must be an approved member");
     }
 
-    await db.insert(channelMembers).values({ channelId, userId, role }).onConflictDoNothing();
+    await db.transaction(async (tx) => {
+        const inserted = await tx
+            .insert(channelMembers)
+            .values({ channelId, userId, role })
+            .onConflictDoNothing()
+            .returning({ id: channelMembers.id });
+        // Announce only on a real join (not a no-op when already a member).
+        if (inserted.length > 0) {
+            await insertSystemMessage(tx, {
+                channelId,
+                event: "join",
+                subjectUserId: userId,
+                actorUserId: actor.id
+            });
+        }
+    });
 
     revalidatePath(`/channels/${channelId}`);
 }
@@ -67,13 +83,25 @@ export async function setChannelMemberRole(formData: FormData) {
 
 export async function removeChannelMember(formData: FormData) {
     const channelId = requireField(formData, "channelId");
-    await authorizeChannel(channelId, "channel:manage_members");
+    const { user: actor } = await authorizeChannel(channelId, "channel:manage_members");
 
     const userId = requireField(formData, "userId");
     await assertTargetNotOwner(channelId, userId);
-    await db
-        .delete(channelMembers)
-        .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)));
+    await db.transaction(async (tx) => {
+        const removed = await tx
+            .delete(channelMembers)
+            .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)))
+            .returning({ id: channelMembers.id });
+        // Announce only if a membership was actually removed.
+        if (removed.length > 0) {
+            await insertSystemMessage(tx, {
+                channelId,
+                event: "leave",
+                subjectUserId: userId,
+                actorUserId: actor.id
+            });
+        }
+    });
 
     revalidatePath(`/channels/${channelId}`);
 }
