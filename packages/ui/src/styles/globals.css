@@ -175,6 +175,55 @@ html[data-font-family="atkinson"] {
     --font-sans: var(--font-atkinson);
 }
 
+/* react-easy-crop layout styles (the avatar editor). Vendored here rather than
+   imported from the package, whose shipped .css.d.ts is malformed and breaks
+   tsc. Class names are the library's stable public contract. */
+.reactEasyCrop_Container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+    cursor: move;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.reactEasyCrop_Image,
+.reactEasyCrop_Video {
+    will-change: transform;
+    max-width: unset;
+}
+.reactEasyCrop_Contain {
+    max-width: 100%;
+    max-height: 100%;
+    margin: auto;
+    position: absolute;
+    inset: 0;
+}
+.reactEasyCrop_Cover_Horizontal {
+    width: 100%;
+    height: auto;
+}
+.reactEasyCrop_Cover_Vertical {
+    width: auto;
+    height: 100%;
+}
+.reactEasyCrop_CropArea {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-sizing: border-box;
+    box-shadow: 0 0 0 9999em;
+    color: rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+.reactEasyCrop_CropAreaRound {
+    border-radius: 50%;
+}
+
 @layer components {
     /* Identity-color hue picker: a full-spectrum rainbow track with a thumb
        tinted to the currently selected color (--hue-color, set inline). */

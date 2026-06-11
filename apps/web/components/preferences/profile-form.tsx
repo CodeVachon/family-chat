@@ -1,16 +1,22 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { toast } from "sonner";
 
 import { ImageIcon } from "lucide-react";
 
 import { TextField } from "@/components/auth/text-field";
+import { AvatarEditor } from "@/components/upload/avatar-editor";
 import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateProfile } from "@/lib/actions/preferences";
-import { avatarUrl as avatarTransform, bannerUrl as bannerTransform } from "@/lib/cloudinary/url";
+import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
+import {
+    avatarUrl as avatarTransform,
+    bannerUrl as bannerTransform,
+    type AvatarCrop
+} from "@/lib/cloudinary/url";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
 import { Textarea } from "@workspace/ui/components/textarea";
@@ -56,6 +62,8 @@ export function ProfileForm({
         displayName: string;
         colorHue: number;
         avatarUrl: string | null;
+        avatarSourceUrl: string | null;
+        avatarCrop: AvatarCrop | null;
         bannerUrl: string | null;
         bio: string;
         phone: string;
@@ -63,16 +71,74 @@ export function ProfileForm({
     };
 }) {
     const router = useRouter();
+    const fileRef = useRef<HTMLInputElement>(null);
     const [displayName, setDisplayName] = useState(initial.displayName);
     const [colorHue, setColorHue] = useState(initial.colorHue);
     const [avatar, setAvatar] = useState(initial.avatarUrl);
+    const [sourceUrl, setSourceUrl] = useState(initial.avatarSourceUrl);
+    const [crop, setCrop] = useState<AvatarCrop | null>(initial.avatarCrop);
     const [banner, setBanner] = useState(initial.bannerUrl);
     const [bio, setBio] = useState(initial.bio);
     const [phone, setPhone] = useState(initial.phone);
     const [uploading, setUploading] = useState(false);
     const [pending, setPending] = useState(false);
 
+    // Avatar editor state. `editorSrc` is the image being cropped (a local
+    // object URL for a freshly picked file, or the stored source URL when
+    // re-adjusting); `pendingFile` is set only in the former case.
+    const [editorOpen, setEditorOpen] = useState(false);
+    const [editorSrc, setEditorSrc] = useState<string | null>(null);
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+
     const previewName = displayName.trim() || initial.fallbackName;
+
+    function openEditorForFile(file: File) {
+        // Revoke any prior object URL before replacing it.
+        if (pendingFile && editorSrc) URL.revokeObjectURL(editorSrc);
+        setPendingFile(file);
+        setEditorSrc(URL.createObjectURL(file));
+        setEditorOpen(true);
+    }
+
+    function openEditorForExisting() {
+        if (!sourceUrl) return;
+        setPendingFile(null);
+        setEditorSrc(sourceUrl);
+        setEditorOpen(true);
+    }
+
+    function closeEditor() {
+        if (pendingFile && editorSrc) URL.revokeObjectURL(editorSrc);
+        setEditorOpen(false);
+        setEditorSrc(null);
+        setPendingFile(null);
+    }
+
+    async function onCropComplete(pixels: AvatarCrop) {
+        try {
+            let src = sourceUrl;
+            if (pendingFile) {
+                setUploading(true);
+                const res = await uploadToCloudinary(pendingFile);
+                src = res.secureUrl;
+                setSourceUrl(src);
+            }
+            if (!src) return;
+            setCrop(pixels);
+            setAvatar(avatarTransform(src, pixels));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setUploading(false);
+            closeEditor();
+        }
+    }
+
+    function removeAvatar() {
+        setAvatar(null);
+        setSourceUrl(null);
+        setCrop(null);
+    }
 
     async function save() {
         setPending(true);
@@ -81,6 +147,8 @@ export function ProfileForm({
                 displayName: displayName.trim() || null,
                 colorHue,
                 avatarUrl: avatar,
+                avatarSourceUrl: sourceUrl,
+                avatarCrop: crop,
                 bannerUrl: banner,
                 bio: bio.trim() || null,
                 phone: phone.trim() || null
@@ -96,20 +164,52 @@ export function ProfileForm({
 
     return (
         <div data-component="ProfileForm" className="flex flex-col gap-6">
-            <ImageUploadField
-                value={avatar}
-                onChange={setAvatar}
-                transform={avatarTransform}
-                uploadLabel="Upload avatar"
-                onUploadingChange={setUploading}
-                renderPreview={(url) => (
-                    <UserAvatar
-                        name={previewName}
-                        colorHue={colorHue}
-                        avatarUrl={url}
-                        className="size-16"
+            <div className="flex items-center gap-4">
+                <UserAvatar
+                    name={previewName}
+                    colorHue={colorHue}
+                    avatarUrl={avatar}
+                    className="size-16"
+                />
+                <div className="flex flex-wrap gap-2">
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) openEditorForFile(f);
+                            e.target.value = "";
+                        }}
                     />
-                )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploading}
+                        onClick={() => fileRef.current?.click()}
+                    >
+                        {uploading ? "Uploading…" : avatar ? "Change avatar" : "Upload avatar"}
+                    </Button>
+                    {sourceUrl && (
+                        <Button type="button" variant="outline" onClick={openEditorForExisting}>
+                            Adjust crop
+                        </Button>
+                    )}
+                    {avatar && (
+                        <Button type="button" variant="ghost" onClick={removeAvatar}>
+                            Remove
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            <AvatarEditor
+                open={editorOpen}
+                imageSrc={editorSrc}
+                initialCrop={pendingFile ? null : crop}
+                onCancel={closeEditor}
+                onComplete={(pixels) => void onCropComplete(pixels)}
             />
 
             <div className="flex flex-col gap-2">

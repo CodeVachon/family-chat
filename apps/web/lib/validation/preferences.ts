@@ -28,13 +28,24 @@ const optionalText = (max: number) =>
         .nullable()
         .transform((v) => (v && v.length > 0 ? v : null));
 
+const avatarCropSchema = z.object({
+    x: z.number().min(0),
+    y: z.number().min(0),
+    width: z.number().positive(),
+    height: z.number().positive()
+});
+
 export const profilePrefsSchema = z.object({
     displayName: optionalText(50),
     colorHue: z.number().int().min(0).max(360),
     avatarUrl: z.string().url().nullable(),
     bio: optionalText(280).default(null),
     phone: optionalText(30).default(null),
-    bannerUrl: z.string().url().nullable().default(null)
+    bannerUrl: z.string().url().nullable().default(null),
+    // Raw uploaded image + manual crop, kept so the editor can be reopened.
+    // Both null when the avatar is cleared or has no manual crop.
+    avatarSourceUrl: z.string().url().nullable().default(null),
+    avatarCrop: avatarCropSchema.nullable().default(null)
 });
 
 export const appearancePrefsSchema = z.object({

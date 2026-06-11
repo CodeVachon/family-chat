@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { cache } from "react";
 
 import { db } from "@workspace/db/client";
-import { userPreferences } from "@workspace/db/schema";
+import { userPreferences, type AvatarCrop } from "@workspace/db/schema";
 
 import type {
     DateTimeFormat,
@@ -23,6 +23,8 @@ export type ResolvedPreferences = {
     fontSizeScale: FontSizeScale;
     fontFamily: FontFamily;
     avatarUrl: string | null;
+    avatarSourceUrl: string | null;
+    avatarCrop: AvatarCrop | null;
     bio: string | null;
     phone: string | null;
     bannerUrl: string | null;
@@ -42,6 +44,8 @@ const DEFAULT_PREFERENCES: ResolvedPreferences = {
     fontSizeScale: "default",
     fontFamily: "figtree",
     avatarUrl: null,
+    avatarSourceUrl: null,
+    avatarCrop: null,
     bio: null,
     phone: null,
     bannerUrl: null
@@ -65,6 +69,8 @@ export const getUserPreferences = cache(async (userId: string): Promise<Resolved
         fontSizeScale: row.fontSizeScale as FontSizeScale,
         fontFamily: row.fontFamily as FontFamily,
         avatarUrl: row.avatarUrl,
+        avatarSourceUrl: row.avatarSourceUrl,
+        avatarCrop: row.avatarCrop,
         bio: row.bio,
         phone: row.phone,
         bannerUrl: row.bannerUrl
