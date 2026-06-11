@@ -20,7 +20,11 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { extractMentionIds } from "@/lib/messaging/rich-text";
 import { cn } from "@workspace/ui/lib/utils";
 
-export type RichTextEditorHandle = { clear: () => void; focus: () => void };
+export type RichTextEditorHandle = {
+    clear: () => void;
+    focus: () => void;
+    setContent: (html: string) => void;
+};
 
 export type EditorState = { html: string; isEmpty: boolean; mentionIds: string[] };
 
@@ -275,7 +279,8 @@ export const RichTextEditor = forwardRef<
 
         useImperativeHandle(ref, () => ({
             clear: () => editor?.commands.clearContent(true),
-            focus: () => editor?.commands.focus("end")
+            focus: () => editor?.commands.focus("end"),
+            setContent: (html: string) => editor?.commands.setContent(html)
         }));
 
         return (

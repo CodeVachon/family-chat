@@ -9,7 +9,7 @@ export function MessageList({
     viewer,
     members = []
 }: {
-    messages: ChannelMessage[];
+    messages: (ChannelMessage & { pending?: boolean })[];
     viewer: MessageViewer;
     members?: ComposerMember[];
 }) {
@@ -30,7 +30,13 @@ export function MessageList({
                 m.type === "system" ? (
                     <SystemMessageRow key={m.id} message={m} />
                 ) : (
-                    <MessageItem key={m.id} message={m} viewer={viewer} members={members} />
+                    <MessageItem
+                        key={m.id}
+                        message={m}
+                        viewer={viewer}
+                        members={members}
+                        pending={m.pending}
+                    />
                 )
             )}
         </div>
