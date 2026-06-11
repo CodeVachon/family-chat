@@ -52,6 +52,15 @@ export const profilePrefsSchema = z.object({
     avatarCrop: avatarCropSchema.nullable().optional()
 });
 
+/** The avatar as a self-contained, immediately-saved unit (the editor's "Save
+ * crop" / "Remove"). Only these three keys are written, so an avatar save can
+ * never disturb the other profile fields. */
+export const avatarPrefsSchema = z.object({
+    avatarUrl: z.string().url().nullable(),
+    avatarSourceUrl: z.string().url().nullable(),
+    avatarCrop: avatarCropSchema.nullable()
+});
+
 export const appearancePrefsSchema = z.object({
     themePreference: z.enum(THEME_OPTIONS),
     dateTimeFormat: z.enum(DATE_TIME_FORMATS),
