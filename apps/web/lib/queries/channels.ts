@@ -100,6 +100,7 @@ export async function listVisibleChannels(userId: string) {
         SELECT COUNT(*)::int FROM ${messages} m
         WHERE m.channel_id = ${channels.id}
           AND m.deleted_at IS NULL
+          AND m.type <> 'system'
           AND m.author_user_id <> ${userId}
           AND (${channelMembers.lastReadAt} IS NULL OR m.created_at > ${channelMembers.lastReadAt})
     ) END`;
@@ -231,6 +232,9 @@ export async function listThreadMessages(rootId: string, userId: string) {
     const rows = await queryMessages(
         or(eq(messages.id, rootId), eq(messages.threadRootId, rootId))
     );
+    // System announcements have no thread; a hand-crafted ?thread=<systemId> URL
+    // must not open one (it would render as an empty-body normal message).
+    if (rows.length === 1 && rows[0]!.type === "system") return [];
     return decorateMessages(rows, userId);
 }
 

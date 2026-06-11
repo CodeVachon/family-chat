@@ -1,6 +1,7 @@
 import type { ComposerMember } from "@/components/channels/composer";
 import { MessageItem } from "@/components/channels/message-item";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
+import { SystemMessageRow } from "@/components/channels/system-message-row";
 import type { ChannelMessage } from "@/lib/queries/channels";
 
 export function MessageList({
@@ -25,9 +26,13 @@ export function MessageList({
 
     return (
         <div data-component="MessageList" className="flex flex-col py-4">
-            {messages.map((m) => (
-                <MessageItem key={m.id} message={m} viewer={viewer} members={members} />
-            ))}
+            {messages.map((m) =>
+                m.type === "system" ? (
+                    <SystemMessageRow key={m.id} message={m} />
+                ) : (
+                    <MessageItem key={m.id} message={m} viewer={viewer} members={members} />
+                )
+            )}
         </div>
     );
 }

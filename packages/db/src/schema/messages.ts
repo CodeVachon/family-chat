@@ -1,7 +1,28 @@
-import { type AnyPgColumn, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+    type AnyPgColumn,
+    index,
+    jsonb,
+    pgTable,
+    text,
+    timestamp,
+    uuid
+} from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { channels } from "./channels";
+import { messageType } from "./enums";
+
+/**
+ * Payload for a `system` message. The subject is the user who joined/left (also
+ * stored as `authorUserId` so existing author joins keep working); the actor is
+ * who performed the action — equal to the subject for a self join/leave,
+ * different when an admin adds or removes someone.
+ */
+export type SystemMessageEvent = {
+    event: "join" | "leave";
+    subjectUserId: string;
+    actorUserId: string;
+};
 
 export const messages = pgTable(
     "messages",
@@ -13,6 +34,10 @@ export const messages = pgTable(
         authorUserId: text("author_user_id")
             .notNull()
             .references(() => user.id),
+        // `user` = authored message; `system` = inline join/leave announcement.
+        type: messageType("type").notNull().default("user"),
+        // Set only for `system` messages; describes the announced event.
+        systemEvent: jsonb("system_event").$type<SystemMessageEvent>(),
         // null = top-level channel message; set = reply belonging to that root's thread.
         threadRootId: uuid("thread_root_id").references((): AnyPgColumn => messages.id, {
             onDelete: "cascade"

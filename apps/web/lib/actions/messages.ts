@@ -122,6 +122,7 @@ export async function editMessage(input: unknown) {
 
     const message = await db.query.messages.findFirst({ where: eq(messages.id, data.messageId) });
     if (!message || message.deletedAt) throw new Error("Message not found");
+    if (message.type === "system") throw new Error("System messages cannot be edited");
 
     const { user, channel, membership } = await authorizeChannel(message.channelId, "channel:view");
     const isAuthor = message.authorUserId === user.id;
@@ -161,6 +162,7 @@ export async function editMessage(input: unknown) {
 export async function deleteMessage(messageId: string) {
     const message = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
     if (!message || message.deletedAt) return;
+    if (message.type === "system") throw new Error("System messages cannot be deleted");
 
     const { user, channel, membership } = await authorizeChannel(message.channelId, "channel:view");
     const isAuthor = message.authorUserId === user.id;
