@@ -14,12 +14,16 @@ import {
 } from "@/lib/validation/preferences";
 
 async function upsertPreferences(userId: string, values: Record<string, unknown>) {
+    // Only write keys that were actually provided. A field omitted from the
+    // payload (e.g. a stale client bundle) must not overwrite the stored value
+    // with null; an explicit null (a cleared field) is kept and does clear it.
+    const set = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
     await db
         .insert(userPreferences)
-        .values({ userId, ...values })
+        .values({ userId, ...set })
         .onConflictDoUpdate({
             target: userPreferences.userId,
-            set: { ...values, updatedAt: new Date() }
+            set: { ...set, updatedAt: new Date() }
         });
 }
 
