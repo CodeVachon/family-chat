@@ -15,6 +15,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
 import {
     avatarUrl as avatarTransform,
     bannerUrl as bannerTransform,
+    originalUrl,
     type AvatarCrop
 } from "@/lib/cloudinary/url";
 import { Button } from "@workspace/ui/components/button";
@@ -92,6 +93,11 @@ export function ProfileForm({
 
     const previewName = displayName.trim() || initial.fallbackName;
 
+    // The image to (re-)crop: the stored raw source when we have one, otherwise
+    // the raw image recovered from the baked avatar URL — so avatars created
+    // before the editor (no stored source) can still be re-cropped.
+    const editSource = sourceUrl ?? (avatar ? originalUrl(avatar) : null);
+
     function openEditorForFile(file: File) {
         // Revoke any prior object URL before replacing it.
         if (pendingFile && editorSrc) URL.revokeObjectURL(editorSrc);
@@ -101,9 +107,9 @@ export function ProfileForm({
     }
 
     function openEditorForExisting() {
-        if (!sourceUrl) return;
+        if (!editSource) return;
         setPendingFile(null);
-        setEditorSrc(sourceUrl);
+        setEditorSrc(editSource);
         setEditorOpen(true);
     }
 
@@ -116,14 +122,19 @@ export function ProfileForm({
 
     async function onCropComplete(pixels: AvatarCrop) {
         try {
-            let src = sourceUrl;
+            // For a freshly picked file, upload to get a raw source; otherwise
+            // crop the source the editor was opened on (the stored source, or
+            // the one derived from the existing avatar).
+            let src = editorSrc;
             if (pendingFile) {
                 setUploading(true);
                 const res = await uploadToCloudinary(pendingFile);
                 src = res.secureUrl;
-                setSourceUrl(src);
             }
             if (!src) return;
+            // Persist the source so subsequent edits restore this crop — this is
+            // what backfills avatarSourceUrl for previously-sourceless avatars.
+            setSourceUrl(src);
             setCrop(pixels);
             setAvatar(avatarTransform(src, pixels));
         } catch (err) {
@@ -191,7 +202,7 @@ export function ProfileForm({
                     >
                         {uploading ? "Uploading…" : avatar ? "Change avatar" : "Upload avatar"}
                     </Button>
-                    {sourceUrl && (
+                    {avatar && editSource && (
                         <Button type="button" variant="outline" onClick={openEditorForExisting}>
                             Adjust crop
                         </Button>
