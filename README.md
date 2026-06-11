@@ -60,7 +60,7 @@ cp .env.example .env
 docker compose up -d
 
 # 4. Apply database migrations
-bun --cwd packages/db run db:migrate
+bun run db:migrate
 
 # 5. Run the dev server (http://localhost:5766)
 bun dev
@@ -80,14 +80,21 @@ Run from the repo root (Turbo fans these out across the workspace):
 | `bun run format`    | Format with Prettier          |
 | `bun run typecheck` | Type-check the whole monorepo |
 
-Database commands (run inside `packages/db`, e.g. `bun --cwd packages/db run db:studio`):
+Database commands (also runnable from the repo root, e.g. `bun run db:migrate`):
 
-| Command       | What it does                               |
-| ------------- | ------------------------------------------ |
-| `db:generate` | Generate a migration from schema changes   |
-| `db:migrate`  | Apply pending migrations                   |
-| `db:push`     | Push the schema directly (dev convenience) |
-| `db:studio`   | Open Drizzle Studio                        |
+| Command               | What it does                                                         |
+| --------------------- | -------------------------------------------------------------------- |
+| `bun run db:generate` | Generate a migration from schema changes                             |
+| `bun run db:migrate`  | Apply pending migrations (drizzle-kit; for local dev)                |
+| `bun run db:deploy`   | Apply pending migrations with the runtime migrator (CI / production) |
+| `bun run db:push`     | Push the schema directly (dev convenience)                           |
+| `bun run db:studio`   | Open Drizzle Studio                                                  |
+
+Both `db:migrate` and `db:deploy` apply the same migrations. `db:migrate` uses
+`drizzle-kit` and is the everyday dev command; `db:deploy` runs the dependency-free
+runtime migrator (`packages/db/src/migrate.ts`) under a Postgres advisory lock — it
+needs no devDependencies, so it's what runs in CI and what the production container
+runs on startup (see [Running with Docker](#running-with-docker)).
 
 ## Configuration
 
@@ -132,7 +139,17 @@ docker build -t family-chat .
 docker run --env-file .env -p 5766:5766 family-chat
 ```
 
-The app listens on port **5766**. Point `DATABASE_URL` at a Postgres reachable from the container, and make sure migrations have been applied.
+The app listens on port **5766**. Point `DATABASE_URL` at a Postgres reachable from the container.
+
+### Migrations on startup
+
+The container applies any pending database migrations before starting the server, so a deploy is a single step — no separate migrate command needed. This is handled by `docker-entrypoint.sh`, which runs the bundled runtime migrator under a Postgres advisory lock (safe even if several replicas boot at once).
+
+To run migrations as a separate pipeline step instead — e.g. once, before rolling the app across multiple replicas — disable the on-startup behavior with `RUN_MIGRATIONS_ON_START=false` and invoke the migrator directly:
+
+```bash
+docker run --rm --env-file .env --entrypoint node family-chat /app/migrate.mjs
+```
 
 ## License
 

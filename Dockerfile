@@ -85,6 +85,17 @@ WORKDIR /app/apps/web
 RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN,required=false \
     node node_modules/next/dist/bin/next build
 
+# ── migrate-builder: bundle the standalone DB migrator (under Bun) ──────────
+# The runtime image is a slim Next standalone build and carries neither
+# drizzle-kit (a devDependency) nor the migration SQL — so we can't run
+# `drizzle-kit migrate` there. Instead bundle the runtime `drizzle-orm`
+# migrator (packages/db/src/migrate.ts) into one self-contained script. This
+# stage has Bun and the installed workspace from `deps`.
+FROM deps AS migrate-builder
+WORKDIR /app
+COPY . .
+RUN bun build packages/db/src/migrate.ts --target=node --outfile=/app/migrate.mjs
+
 # ── runner: minimal Node image that runs the standalone server ─────────────
 FROM node:${NODE_VERSION}-slim AS runner
 WORKDIR /app
@@ -105,6 +116,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
+# The self-contained migrator bundle plus the migration SQL it reads at runtime
+# (MIGRATIONS_DIR=/app/drizzle, set by the entrypoint). The entrypoint applies
+# pending migrations before starting the server.
+COPY --from=migrate-builder --chown=nextjs:nodejs /app/migrate.mjs ./migrate.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/packages/db/drizzle ./drizzle
+COPY --chown=nextjs:nodejs --chmod=0755 docker-entrypoint.sh ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 5766
@@ -114,4 +132,6 @@ EXPOSE 5766
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["node", "-e", "fetch('http://127.0.0.1:5766/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
 
-CMD ["node", "apps/web/server.js"]
+# Apply pending migrations (toggle with RUN_MIGRATIONS_ON_START), then exec the
+# Next standalone server. See docker-entrypoint.sh for the separate-step option.
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
