@@ -34,3 +34,8 @@ export function pdfPageUrl(secureUrl: string, page: number): string {
 export function avatarUrl(secureUrl: string): string {
     return withTransform(secureUrl, "c_fill,g_auto,w_256,h_256,q_auto,f_auto");
 }
+
+/** Wide profile banner crop (social-card header). */
+export function bannerUrl(secureUrl: string): string {
+    return withTransform(secureUrl, "c_fill,g_auto,w_1500,h_500,q_auto,f_auto");
+}

@@ -7,6 +7,7 @@ import { MessageScroller } from "@/components/channels/message-scroller";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
 import { ThreadPanel } from "@/components/channels/thread-panel";
 import { TypingIndicator } from "@/components/channels/typing-indicator";
+import { ProfilePanel } from "@/components/profile/profile-panel";
 import { authorizeChannel } from "@/lib/dal";
 import { canInChannel } from "@/lib/permissions";
 import { CHANNEL_PAGE_SIZE, listChannelMembers, listChannelMessages } from "@/lib/queries/channels";
@@ -18,10 +19,10 @@ export default async function ChannelPage({
     searchParams
 }: {
     params: Promise<{ channelId: string }>;
-    searchParams: Promise<{ thread?: string }>;
+    searchParams: Promise<{ thread?: string; profile?: string }>;
 }) {
     const { channelId } = await params;
-    const { thread: threadId } = await searchParams;
+    const { thread: threadId, profile: profileId } = await searchParams;
     const { user, channel, membership } = await authorizeChannel(channelId, "channel:view");
 
     const canPost = canInChannel(user, membership, channel, "channel:post");
@@ -60,7 +61,12 @@ export default async function ChannelPage({
 
     return (
         <div data-component="ChannelPage" className="flex h-full min-h-0">
-            <div className={cn("flex min-h-0 flex-1 flex-col", threadId && "hidden lg:flex")}>
+            <div
+                className={cn(
+                    "flex min-h-0 flex-1 flex-col",
+                    (threadId || profileId) && "hidden lg:flex"
+                )}
+            >
                 {membership && (
                     <MarkReadOnView channelId={channel.id} latestMessageId={latestMessageId} />
                 )}
@@ -109,7 +115,13 @@ export default async function ChannelPage({
                 )}
             </div>
 
-            {threadId && (
+            {profileId ? (
+                <ProfilePanel
+                    userId={profileId}
+                    viewerId={user.id}
+                    closeHref={`/channels/${channel.id}`}
+                />
+            ) : threadId ? (
                 <ThreadPanel
                     channelId={channel.id}
                     channelName={channel.name}
@@ -118,7 +130,7 @@ export default async function ChannelPage({
                     members={composerMembers}
                     canPost={canPost}
                 />
-            )}
+            ) : null}
         </div>
     );
 }

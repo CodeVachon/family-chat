@@ -4,13 +4,16 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ImageIcon } from "lucide-react";
+
 import { TextField } from "@/components/auth/text-field";
 import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateProfile } from "@/lib/actions/preferences";
-import { avatarUrl as avatarTransform } from "@/lib/cloudinary/url";
+import { avatarUrl as avatarTransform, bannerUrl as bannerTransform } from "@/lib/cloudinary/url";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
 
 function Preview({
@@ -53,6 +56,9 @@ export function ProfileForm({
         displayName: string;
         colorHue: number;
         avatarUrl: string | null;
+        bannerUrl: string | null;
+        bio: string;
+        phone: string;
         fallbackName: string;
     };
 }) {
@@ -60,6 +66,9 @@ export function ProfileForm({
     const [displayName, setDisplayName] = useState(initial.displayName);
     const [colorHue, setColorHue] = useState(initial.colorHue);
     const [avatar, setAvatar] = useState(initial.avatarUrl);
+    const [banner, setBanner] = useState(initial.bannerUrl);
+    const [bio, setBio] = useState(initial.bio);
+    const [phone, setPhone] = useState(initial.phone);
     const [uploading, setUploading] = useState(false);
     const [pending, setPending] = useState(false);
 
@@ -71,7 +80,10 @@ export function ProfileForm({
             await updateProfile({
                 displayName: displayName.trim() || null,
                 colorHue,
-                avatarUrl: avatar
+                avatarUrl: avatar,
+                bannerUrl: banner,
+                bio: bio.trim() || null,
+                phone: phone.trim() || null
             });
             toast.success("Profile updated");
             router.refresh();
@@ -100,6 +112,27 @@ export function ProfileForm({
                 )}
             />
 
+            <div className="flex flex-col gap-2">
+                <Label>Profile banner</Label>
+                <ImageUploadField
+                    value={banner}
+                    onChange={setBanner}
+                    transform={bannerTransform}
+                    uploadLabel="Upload banner"
+                    onUploadingChange={setUploading}
+                    renderPreview={(url) => (
+                        <div className="flex h-20 w-40 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                            {url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={url} alt="" className="size-full object-cover" />
+                            ) : (
+                                <ImageIcon className="size-6 text-muted-foreground" />
+                            )}
+                        </div>
+                    )}
+                />
+            </div>
+
             <TextField
                 id="displayName"
                 label="Display name"
@@ -107,6 +140,28 @@ export function ProfileForm({
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder={initial.fallbackName}
                 maxLength={50}
+            />
+
+            <div className="flex flex-col gap-2">
+                <Label htmlFor="bio">About me</Label>
+                <Textarea
+                    id="bio"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="A short blurb about yourself"
+                    maxLength={280}
+                    rows={3}
+                />
+            </div>
+
+            <TextField
+                id="phone"
+                label="Phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Optional"
+                maxLength={30}
             />
 
             <div className="flex flex-col gap-2">
