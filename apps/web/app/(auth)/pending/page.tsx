@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { PendingWatcher } from "@/components/auth/pending-watcher";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { getSession } from "@/lib/dal";
 import {
@@ -25,6 +26,8 @@ export default async function PendingPage() {
 
     return (
         <Card>
+            {/* While genuinely pending, poll for approval and auto-advance. */}
+            {!rejected && <PendingWatcher />}
             <CardHeader>
                 <CardTitle>{rejected ? "Access denied" : "Awaiting approval"}</CardTitle>
                 <CardDescription>
