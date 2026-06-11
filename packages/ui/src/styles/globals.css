@@ -138,7 +138,87 @@
         cursor: pointer;
     }
 }
+
+/* User font preferences. Kept UNLAYERED (not in @layer base): next/font injects
+   its `--font-sans` (Figtree) declaration as unlayered CSS, and unlayered rules
+   always win over any cascade layer regardless of specificity. These must be
+   unlayered too so the html[data-font-family] override (specificity 0,1,1)
+   actually beats next/font's generated class (0,1,0). */
+
+/* Base font-size scale: rem-based Tailwind sizes scale with the root font-size,
+   so this resizes the whole UI uniformly. Set as a data attribute on <html>
+   server-side (no flash) and kept in sync by UserPrefsProvider. "default" =
+   browser default (100%). */
+html[data-font-size="small"] {
+    font-size: 87.5%;
+}
+html[data-font-size="large"] {
+    font-size: 112.5%;
+}
+html[data-font-size="xlarge"] {
+    font-size: 125%;
+}
+
+/* Body font family: Figtree is the default (its variable already IS
+   --font-sans); each other choice swaps its own loaded font variable into
+   --font-sans. Headings keep --font-heading regardless. */
+html[data-font-family="inter"] {
+    --font-sans: var(--font-inter);
+}
+html[data-font-family="open-sans"] {
+    --font-sans: var(--font-open-sans);
+}
+html[data-font-family="nunito-sans"] {
+    --font-sans: var(--font-nunito-sans);
+}
+html[data-font-family="atkinson"] {
+    --font-sans: var(--font-atkinson);
+}
+
 @layer components {
+    /* Identity-color hue picker: a full-spectrum rainbow track with a thumb
+       tinted to the currently selected color (--hue-color, set inline). */
+    .hue-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 0.75rem;
+        border-radius: 9999px;
+        outline: none;
+        background: linear-gradient(
+            to right,
+            oklch(0.65 0.2 0),
+            oklch(0.65 0.2 60),
+            oklch(0.65 0.2 120),
+            oklch(0.65 0.2 180),
+            oklch(0.65 0.2 240),
+            oklch(0.65 0.2 300),
+            oklch(0.65 0.2 360)
+        );
+    }
+    .hue-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 9999px;
+        background: var(--hue-color);
+        border: 2px solid white;
+        box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+        cursor: pointer;
+    }
+    .hue-slider::-moz-range-thumb {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 9999px;
+        background: var(--hue-color);
+        border: 2px solid white;
+        box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+        cursor: pointer;
+    }
+    .hue-slider:focus-visible {
+        box-shadow: 0 0 0 2px var(--ring);
+    }
     /* Shared styling for rich-text message content — used both in the Tiptap
      editor and when rendering stored message HTML (`.tiptap-content`). */
     .tiptap-content :where(p, ul, ol, blockquote, pre) {
