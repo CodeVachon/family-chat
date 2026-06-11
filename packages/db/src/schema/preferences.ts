@@ -19,6 +19,10 @@ export const userPreferences = pgTable("user_preferences", {
     // 'all' | 'mentions' | 'none'
     notificationLevel: text("notification_level").notNull().default("mentions"),
     colorHue: integer("color_hue").notNull().default(220),
+    // Readability prefs. fontSizeScale scales the whole UI (small|default|large|
+    // xlarge); fontFamily picks the body typeface from an offered set.
+    fontSizeScale: text("font_size_scale").notNull().default("default"),
+    fontFamily: text("font_family").notNull().default("figtree"),
     avatarUrl: text("avatar_url"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow()

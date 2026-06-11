@@ -31,6 +31,15 @@ export function UserPrefsProvider({
         setTheme(prefs.themePreference);
     }, [prefs.themePreference, setTheme]);
 
+    // Keep the font-size/family attributes on <html> in sync after a refresh
+    // (e.g. saved on another device). The root layout sets them server-side for
+    // the initial paint; this covers later changes without a full reload.
+    useEffect(() => {
+        const el = document.documentElement;
+        el.dataset.fontSize = prefs.fontSizeScale;
+        el.dataset.fontFamily = prefs.fontFamily;
+    }, [prefs.fontSizeScale, prefs.fontFamily]);
+
     // Keep relative timestamps fresh.
     useEffect(() => {
         const id = setInterval(() => setNowTick(Date.now()), 60_000);

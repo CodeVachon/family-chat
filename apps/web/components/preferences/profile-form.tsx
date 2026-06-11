@@ -110,17 +110,29 @@ export function ProfileForm({
             />
 
             <div className="flex flex-col gap-2">
-                <Label>Color</Label>
-                <input
-                    type="range"
-                    min={0}
-                    max={360}
-                    value={colorHue}
-                    onChange={(e) => setColorHue(Number(e.target.value))}
-                    className="w-full"
-                    style={{ accentColor: `oklch(0.6 0.18 ${colorHue})` }}
-                    aria-label="Identity color hue"
-                />
+                <Label>Your name color</Label>
+                <p className="text-sm text-muted-foreground">
+                    Used for your name and avatar ring across the app.
+                </p>
+                <div className="flex items-center gap-3">
+                    <span
+                        aria-hidden
+                        className="size-7 shrink-0 rounded-full border"
+                        style={{ background: `oklch(0.6 0.18 ${colorHue})` }}
+                    />
+                    <input
+                        type="range"
+                        min={0}
+                        max={360}
+                        value={colorHue}
+                        onChange={(e) => setColorHue(Number(e.target.value))}
+                        className="hue-slider"
+                        style={
+                            { "--hue-color": `oklch(0.6 0.18 ${colorHue})` } as React.CSSProperties
+                        }
+                        aria-label="Your name color"
+                    />
+                </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Preview name={previewName} colorHue={colorHue} avatarUrl={avatar} />
                     <Preview name={previewName} colorHue={colorHue} avatarUrl={avatar} dark />

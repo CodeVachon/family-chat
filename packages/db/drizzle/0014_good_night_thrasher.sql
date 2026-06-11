@@ -1,0 +1,2 @@
+ALTER TABLE "user_preferences" ADD COLUMN "font_size_scale" text DEFAULT 'default' NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_preferences" ADD COLUMN "font_family" text DEFAULT 'figtree' NOT NULL;

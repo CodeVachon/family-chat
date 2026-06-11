@@ -10,7 +10,9 @@ export default async function AppearanceSettingsPage() {
         <AppearanceForm
             initial={{
                 themePreference: prefs.themePreference,
-                dateTimeFormat: prefs.dateTimeFormat
+                dateTimeFormat: prefs.dateTimeFormat,
+                fontSizeScale: prefs.fontSizeScale,
+                fontFamily: prefs.fontFamily
             }}
         />
     );

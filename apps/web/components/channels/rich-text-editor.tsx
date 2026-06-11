@@ -252,9 +252,11 @@ export const RichTextEditor = forwardRef<
             autofocus: autoFocus ? "end" : false,
             editorProps: {
                 attributes: {
-                    // text-base (16px) on mobile prevents iOS Safari's focus auto-zoom;
-                    // shrink to text-sm on larger screens where zoom isn't triggered.
-                    class: "tiptap-content max-h-48 min-h-10 overflow-y-auto px-3 py-2 text-base outline-none sm:text-sm"
+                    // Mobile font-size floored at 16px (max(1rem,16px)) so iOS
+                    // never auto-zooms on focus, even when the base font scale
+                    // shrinks the UI (Small); shrink to text-sm at md+ (matching
+                    // Input/Textarea) where zoom isn't triggered.
+                    class: "tiptap-content max-h-48 min-h-10 overflow-y-auto px-3 py-2 text-[max(1rem,16px)] outline-none md:text-sm"
                 },
                 handleKeyDown: (_view, event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
