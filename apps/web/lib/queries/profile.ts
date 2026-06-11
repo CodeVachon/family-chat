@@ -23,6 +23,7 @@ export type ProfileFile = {
 export type UserProfile = {
     userId: string;
     name: string;
+    email: string;
     colorHue: number;
     avatarUrl: string | null;
     bannerUrl: string | null;
@@ -43,7 +44,7 @@ const MAX_PROFILE_FILES = 24;
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     const row = await db.query.user.findFirst({
         where: eq(user.id, userId),
-        columns: { id: true, name: true },
+        columns: { id: true, name: true, email: true },
         with: {
             preferences: {
                 columns: {
@@ -94,6 +95,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     return {
         userId: row.id,
         name: row.preferences?.displayName ?? row.name,
+        email: row.email,
         colorHue: row.preferences?.colorHue ?? 220,
         avatarUrl: row.preferences?.avatarUrl ?? null,
         bannerUrl: row.preferences?.bannerUrl ?? null,
