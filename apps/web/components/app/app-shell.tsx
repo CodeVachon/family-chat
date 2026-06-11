@@ -24,6 +24,7 @@ function SidebarContents({
     user,
     channels,
     canAccessAdmin,
+    pendingApprovals,
     appName,
     appIconUrl,
     onNavigate
@@ -31,6 +32,7 @@ function SidebarContents({
     user: ShellUser;
     channels: SidebarChannel[];
     canAccessAdmin: boolean;
+    pendingApprovals: number;
     appName: string;
     appIconUrl: string | null;
     onNavigate?: () => void;
@@ -66,6 +68,7 @@ function SidebarContents({
                         avatarUrl: user.avatarUrl
                     }}
                     canAccessAdmin={canAccessAdmin}
+                    pendingApprovals={pendingApprovals}
                     onNavigate={onNavigate}
                 />
             </div>
@@ -77,6 +80,7 @@ export function AppShell({
     user,
     channels,
     canAccessAdmin,
+    pendingApprovals,
     appName,
     appIconUrl,
     children
@@ -84,6 +88,7 @@ export function AppShell({
     user: ShellUser;
     channels: SidebarChannel[];
     canAccessAdmin: boolean;
+    pendingApprovals: number;
     appName: string;
     appIconUrl: string | null;
     children: React.ReactNode;
@@ -101,6 +106,7 @@ export function AppShell({
                     user={user}
                     channels={channels}
                     canAccessAdmin={canAccessAdmin}
+                    pendingApprovals={pendingApprovals}
                     appName={appName}
                     appIconUrl={appIconUrl}
                 />
@@ -122,6 +128,7 @@ export function AppShell({
                                 user={user}
                                 channels={channels}
                                 canAccessAdmin={canAccessAdmin}
+                                pendingApprovals={pendingApprovals}
                                 appName={appName}
                                 appIconUrl={appIconUrl}
                                 onNavigate={() => setMobileOpen(false)}

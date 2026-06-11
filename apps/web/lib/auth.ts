@@ -114,6 +114,14 @@ export const auth = betterAuth({
                     } catch (err) {
                         console.error("[auth] first-run channel bootstrap failed", err);
                     }
+                    // Notify connected staff that a new (pending) user exists so
+                    // their pending-approvals badge appears without a refresh.
+                    try {
+                        const { getBroker } = await import("./realtime/broker");
+                        getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
+                    } catch (err) {
+                        console.error("[auth] users.changed publish failed", err);
+                    }
                 }
             }
         }
