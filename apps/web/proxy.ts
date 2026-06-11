@@ -89,8 +89,14 @@ export async function proxy(request: NextRequest) {
         return redirectTo("/login");
     }
 
-    // Logged in — keep them off the auth screens.
-    if (isAuthRoute) return redirectTo("/");
+    // Logged in — keep them off the auth screens, but only when we have a cached
+    // session to trust. A bare session-token cookie with no (or lapsed) cookie
+    // cache can be stale — e.g. the session was purged server-side (DB reset,
+    // sign-out elsewhere) or expired. Bouncing it to "/" traps the user in a
+    // /login -> / -> /login loop (ERR_TOO_MANY_REDIRECTS): the DAL then rejects
+    // the session and redirects back here, and being an RSC it can't clear the
+    // cookie. Letting them reach /login lets a fresh login overwrite it.
+    if (isAuthRoute) return approvalKnown ? redirectTo("/") : next();
 
     // Optimistic approval routing — only act when the cache tells us definitively.
     // When the cache has lapsed, let the request through; the DAL gates approval.
