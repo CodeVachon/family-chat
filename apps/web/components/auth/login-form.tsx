@@ -14,18 +14,36 @@ export function LoginForm() {
     const [password, setPassword] = useState("");
     const [pending, setPending] = useState(false);
     const [magicPending, setMagicPending] = useState(false);
+    const [verifyNeeded, setVerifyNeeded] = useState(false);
+    const [resending, setResending] = useState(false);
 
     async function handlePasswordLogin(e: React.FormEvent) {
         e.preventDefault();
         setPending(true);
+        setVerifyNeeded(false);
         const { error } = await authClient.signIn.email({ email, password, callbackURL: "/" });
         setPending(false);
         if (error) {
+            if (error.code === "EMAIL_NOT_VERIFIED") {
+                setVerifyNeeded(true);
+                return;
+            }
             toast.error(error.message ?? "Could not sign in.");
             return;
         }
         router.push("/");
         router.refresh();
+    }
+
+    async function handleResendVerification() {
+        setResending(true);
+        const { error } = await authClient.sendVerificationEmail({ email, callbackURL: "/" });
+        setResending(false);
+        if (error) {
+            toast.error(error.message ?? "Could not resend the email.");
+            return;
+        }
+        toast.success("Verification email sent.");
     }
 
     async function handleMagicLink() {
@@ -72,6 +90,21 @@ export function LoginForm() {
             <Button type="submit" disabled={pending}>
                 {pending ? "Signing in…" : "Sign in"}
             </Button>
+            {verifyNeeded && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-400/10 p-3 text-sm">
+                    <p>Verify your email before signing in. Check your inbox for the link.</p>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={handleResendVerification}
+                        disabled={resending}
+                    >
+                        {resending ? "Sending…" : "Resend verification email"}
+                    </Button>
+                </div>
+            )}
             <div className="relative my-1 text-center text-xs text-muted-foreground">
                 <span className="bg-card px-2">or</span>
                 <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-border" />
