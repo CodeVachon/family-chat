@@ -157,6 +157,21 @@ export async function getChannel(channelId: string) {
     return db.query.channels.findFirst({ where: eq(channels.id, channelId) });
 }
 
+/**
+ * Public, non-archived channels for admin pickers (e.g. choosing default
+ * auto-join channels). Private channels are intentionally excluded so they can
+ * never be configured as defaults.
+ */
+export async function listPublicChannels() {
+    return db.query.channels.findMany({
+        where: and(eq(channels.isPrivate, false), eq(channels.isArchived, false)),
+        orderBy: asc(channels.name),
+        columns: { id: true, name: true, icon: true, color: true }
+    });
+}
+
+export type PublicChannel = Awaited<ReturnType<typeof listPublicChannels>>[number];
+
 /** How many top-level messages one page (initial load or "load older") returns. */
 export const CHANNEL_PAGE_SIZE = 50;
 
