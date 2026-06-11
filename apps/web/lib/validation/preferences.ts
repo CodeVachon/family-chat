@@ -39,13 +39,17 @@ export const profilePrefsSchema = z.object({
     displayName: optionalText(50),
     colorHue: z.number().int().min(0).max(360),
     avatarUrl: z.string().url().nullable(),
-    bio: optionalText(280).default(null),
-    phone: optionalText(30).default(null),
-    bannerUrl: z.string().url().nullable().default(null),
+    // These are `.optional()` (not `.default(null)`) so a payload that omits a
+    // key leaves the stored value untouched rather than nulling it. An explicit
+    // null (a field cleared in the form, which always sends every key) still
+    // clears it. See `upsertPreferences`, which drops `undefined` keys.
+    bio: optionalText(280).optional(),
+    phone: optionalText(30).optional(),
+    bannerUrl: z.string().url().nullable().optional(),
     // Raw uploaded image + manual crop, kept so the editor can be reopened.
     // Both null when the avatar is cleared or has no manual crop.
-    avatarSourceUrl: z.string().url().nullable().default(null),
-    avatarCrop: avatarCropSchema.nullable().default(null)
+    avatarSourceUrl: z.string().url().nullable().optional(),
+    avatarCrop: avatarCropSchema.nullable().optional()
 });
 
 export const appearancePrefsSchema = z.object({
