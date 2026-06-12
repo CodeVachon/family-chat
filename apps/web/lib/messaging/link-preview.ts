@@ -36,6 +36,41 @@ function resolveMaybeRelative(value: string | undefined, base: string): string |
     }
 }
 
+/** Smallest side (px) an OpenGraph image must declare to be used as the card
+ * image; smaller declared images are almost always logos/icons. Images with no
+ * declared size are kept (we can't judge them). */
+const MIN_IMAGE_SIDE = 120;
+
+type OgImage = { url?: string; width?: string | number; height?: string | number };
+
+/**
+ * Choose the best preview image from the OpenGraph/Twitter candidates: drop
+ * images explicitly sized like an icon/logo, prefer the largest with known
+ * dimensions, and only fall back to an unsized image when nothing better
+ * exists. Returns null rather than a wrong/tiny image.
+ */
+function pickPreviewImage(candidates: OgImage[], base: string): string | null {
+    const sized = candidates
+        .map((c) => ({
+            url: resolveMaybeRelative(c.url, base),
+            w: Number(c.width) || 0,
+            h: Number(c.height) || 0
+        }))
+        .filter((c): c is { url: string; w: number; h: number } => Boolean(c.url));
+    if (sized.length === 0) return null;
+
+    const unsized = (c: { w: number; h: number }) => c.w === 0 && c.h === 0;
+    const bigEnough = (c: { w: number; h: number }) =>
+        Math.min(c.w || Infinity, c.h || Infinity) >= MIN_IMAGE_SIDE;
+    const usable = sized.filter((c) => unsized(c) || bigEnough(c));
+    // If every candidate is explicitly icon-sized, show no image rather than a
+    // wrong/tiny one.
+    if (usable.length === 0) return null;
+    // Largest known area first; unsized (area 0) sort last.
+    usable.sort((a, b) => b.w * b.h - a.w * a.h);
+    return usable[0]!.url;
+}
+
 async function fetchPreview(url: string): Promise<PreviewData | null> {
     if (!(await isSafeUrl(url))) return null;
     try {
@@ -50,8 +85,8 @@ async function fetchPreview(url: string): Promise<PreviewData | null> {
         return {
             title: result.ogTitle ?? result.twitterTitle ?? null,
             description: result.ogDescription ?? result.twitterDescription ?? null,
-            imageUrl: resolveMaybeRelative(
-                result.ogImage?.[0]?.url ?? result.twitterImage?.[0]?.url,
+            imageUrl: pickPreviewImage(
+                [...(result.ogImage ?? []), ...(result.twitterImage ?? [])],
                 url
             ),
             siteName: result.ogSiteName ?? null,
