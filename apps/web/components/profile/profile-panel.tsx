@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChannelIcon } from "@/components/channels/channel-icon";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { bannerUrl as bannerTransform, fullUrl, thumbUrl } from "@/lib/cloudinary/url";
+import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { getUserProfile } from "@/lib/queries/profile";
 
 /**
@@ -94,8 +95,11 @@ export async function ProfilePanel({
                         {profile.phone && (
                             <div className="text-sm">
                                 <span className="text-muted-foreground">Phone: </span>
-                                <a href={`tel:${profile.phone}`} className="hover:underline">
-                                    {profile.phone}
+                                <a
+                                    href={`tel:${phoneHref(profile.phone)}`}
+                                    className="hover:underline"
+                                >
+                                    {formatPhoneDisplay(profile.phone)}
                                 </a>
                             </div>
                         )}
