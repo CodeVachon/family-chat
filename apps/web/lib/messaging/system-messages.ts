@@ -20,9 +20,13 @@ export async function insertSystemMessage(
     event: SystemMessageEvent & { channelId: string }
 ): Promise<void> {
     const { channelId, ...payload } = event;
+    // Author the announcement by its subject (join/leave) so the author relation
+    // resolves the clickable mention; settings changes have no subject, so they
+    // are authored by the actor who made the change.
+    const authorUserId = "subjectUserId" in payload ? payload.subjectUserId : payload.actorUserId;
     await dbOrTx.insert(messages).values({
         channelId,
-        authorUserId: payload.subjectUserId,
+        authorUserId,
         type: "system",
         systemEvent: payload,
         body: ""
