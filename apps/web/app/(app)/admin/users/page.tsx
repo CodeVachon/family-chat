@@ -5,7 +5,7 @@ import { user as userTable } from "@workspace/db/schema";
 
 import { InviteUserForm } from "@/components/admin/invite-user-form";
 import { UserAvatar } from "@/components/user/user-identity";
-import { demoteToUser, promoteToAdmin, unapproveUser } from "@/lib/actions/admin";
+import { approveUser, demoteToUser, promoteToAdmin, unapproveUser } from "@/lib/actions/admin";
 import { requireApprovedUser } from "@/lib/dal";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
@@ -64,16 +64,25 @@ export default async function UsersPage() {
                             </div>
 
                             <div className="flex shrink-0 gap-2">
-                                {u.approvalStatus === "approved" && u.appRole !== "owner" && (
-                                    <form action={unapproveUser}>
-                                        <input type="hidden" name="userId" value={u.id} />
-                                        <Button type="submit" size="sm" variant="outline">
-                                            Unapprove
-                                        </Button>
-                                    </form>
-                                )}
+                                {u.appRole !== "owner" &&
+                                    (u.approvalStatus === "approved" ? (
+                                        <form action={unapproveUser}>
+                                            <input type="hidden" name="userId" value={u.id} />
+                                            <Button type="submit" size="sm" variant="outline">
+                                                Unapprove
+                                            </Button>
+                                        </form>
+                                    ) : (
+                                        <form action={approveUser}>
+                                            <input type="hidden" name="userId" value={u.id} />
+                                            <Button type="submit" size="sm" variant="outline">
+                                                Approve
+                                            </Button>
+                                        </form>
+                                    ))}
                                 {isOwner &&
                                     u.appRole !== "owner" &&
+                                    u.approvalStatus === "approved" &&
                                     (u.appRole === "user" ? (
                                         <form action={promoteToAdmin}>
                                             <input type="hidden" name="userId" value={u.id} />
