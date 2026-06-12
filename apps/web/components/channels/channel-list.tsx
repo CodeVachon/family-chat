@@ -21,12 +21,20 @@ export type SidebarChannel = {
     mentionCount: number;
 };
 
-function ChannelLink({ channel, active }: { channel: SidebarChannel; active: boolean }) {
+function ChannelLink({
+    channel,
+    active,
+    onNavigate
+}: {
+    channel: SidebarChannel;
+    active: boolean;
+    onNavigate?: () => void;
+}) {
     return (
         <Link
             data-component="ChannelLink"
             href={`/channels/${channel.id}`}
-            onClick={() => undefined}
+            onClick={onNavigate}
             className={cn(
                 "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
                 active
@@ -77,7 +85,7 @@ export function ChannelList({
     const archived = channels.filter((c) => c.isArchived);
 
     return (
-        <div className="flex flex-col gap-1" onClick={onNavigate}>
+        <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between px-2 py-1">
                 <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Channels
@@ -101,7 +109,12 @@ export function ChannelList({
                 <p className="px-2 py-1 text-xs text-muted-foreground">No channels yet.</p>
             )}
             {active.map((c) => (
-                <ChannelLink key={c.id} channel={c} active={c.id === activeId} />
+                <ChannelLink
+                    key={c.id}
+                    channel={c}
+                    active={c.id === activeId}
+                    onNavigate={onNavigate}
+                />
             ))}
 
             {archived.length > 0 && (
@@ -110,7 +123,12 @@ export function ChannelList({
                         Archived
                     </span>
                     {archived.map((c) => (
-                        <ChannelLink key={c.id} channel={c} active={c.id === activeId} />
+                        <ChannelLink
+                            key={c.id}
+                            channel={c}
+                            active={c.id === activeId}
+                            onNavigate={onNavigate}
+                        />
                     ))}
                 </>
             )}
