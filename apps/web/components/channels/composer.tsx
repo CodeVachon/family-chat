@@ -10,6 +10,10 @@ import {
     type PendingAttachment
 } from "@/components/channels/composer-attachment";
 import {
+    type OptimisticMessage,
+    useOptimisticMessages
+} from "@/components/channels/optimistic-messages";
+import {
     RichTextEditor,
     type EditorState,
     type RichTextEditorHandle
@@ -21,6 +25,13 @@ import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 
 export type ComposerMember = { id: string; name: string };
+/** The sending user's display identity, used to render the optimistic message. */
+export type ComposerAuthor = {
+    id: string;
+    name: string;
+    colorHue: number;
+    avatarUrl: string | null;
+};
 
 const EMPTY_EDITOR: EditorState = { html: "", isEmpty: true, mentionIds: [] };
 
@@ -28,16 +39,19 @@ export function Composer({
     channelId,
     channelName,
     members,
+    author,
     threadRootId = null,
     placeholder
 }: {
     channelId: string;
     channelName: string;
     members: ComposerMember[];
+    author?: ComposerAuthor;
     threadRootId?: string | null;
     placeholder?: string;
 }) {
     const router = useRouter();
+    const optimistic = useOptimisticMessages();
     const { sendTyping } = useRealtime();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const editorRef = useRef<RichTextEditorHandle>(null);
@@ -87,27 +101,121 @@ export function Composer({
         .map((it) => it.data!);
     const canSend = !pending && !anyUploading && (!editor.isEmpty || readyAttachments.length > 0);
 
-    async function send() {
+    // Build the optimistic message shown in the timeline the instant we send,
+    // before the server round-trip. Reconciled against the persisted row (by
+    // the returned id) once router.refresh() refetches the list.
+    function buildOptimistic(
+        nonce: string,
+        html: string,
+        mentionIds: string[],
+        attachmentsInput: typeof readyAttachments
+    ): OptimisticMessage {
+        const id = `optimistic:${nonce}`;
+        const now = new Date();
+        return {
+            id,
+            channelId,
+            authorUserId: author!.id,
+            type: "user",
+            systemEvent: null,
+            threadRootId,
+            body: html,
+            editedAt: null,
+            deletedAt: null,
+            createdAt: now,
+            updatedAt: now,
+            author: {
+                id: author!.id,
+                name: author!.name,
+                preferences: {
+                    displayName: author!.name,
+                    colorHue: author!.colorHue,
+                    avatarUrl: author!.avatarUrl
+                }
+            },
+            attachments: attachmentsInput.map((a, i) => ({
+                id: `${id}:${i}`,
+                messageId: id,
+                uploaderId: author!.id,
+                kind: a.kind,
+                provider: "cloudinary",
+                publicId: a.publicId,
+                resourceType: a.resourceType,
+                secureUrl: a.secureUrl,
+                format: a.format,
+                bytes: a.bytes,
+                width: a.width,
+                height: a.height,
+                originalFilename: a.originalFilename,
+                thumbnailUrl: null,
+                createdAt: now
+            })),
+            reactions: [],
+            mentions: mentionIds.map((uid) => ({
+                userId: uid,
+                name: members.find((m) => m.id === uid)?.name ?? "",
+                colorHue: 220
+            })),
+            mentionsMe: false,
+            linkPreviews: [],
+            replyCount: 0,
+            lastReplyAt: null,
+            pending: true,
+            nonce
+        };
+    }
+
+    function send() {
         if (!canSend) return;
-        setPending(true);
-        try {
-            await postMessage({
-                channelId,
-                threadRootId,
-                body: editor.html,
-                attachments: readyAttachments,
-                mentionUserIds: editor.mentionIds
-            });
-            items.forEach((it) => it.previewUrl && URL.revokeObjectURL(it.previewUrl));
-            editorRef.current?.clear();
-            setEditor(EMPTY_EDITOR);
-            setItems([]);
-            router.refresh();
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to send message");
-        } finally {
-            setPending(false);
+
+        // Snapshot the current draft so we can restore it if the send fails.
+        const html = editor.html;
+        const wasEmpty = editor.isEmpty;
+        const mentionIds = editor.mentionIds;
+        const sentItems = items;
+        const attachmentsInput = readyAttachments;
+
+        const optimisticEnabled = Boolean(optimistic && author);
+        const nonce = crypto.randomUUID();
+
+        // Clear the composer immediately so sending feels instant.
+        editorRef.current?.clear();
+        setEditor(EMPTY_EDITOR);
+        setItems([]);
+        if (optimisticEnabled) {
+            optimistic!.enqueue(buildOptimistic(nonce, html, mentionIds, attachmentsInput));
+        } else {
+            setPending(true);
         }
+
+        void (async () => {
+            try {
+                const res = await postMessage({
+                    channelId,
+                    threadRootId,
+                    body: html,
+                    attachments: attachmentsInput,
+                    mentionUserIds: mentionIds
+                });
+                sentItems.forEach((it) => it.previewUrl && URL.revokeObjectURL(it.previewUrl));
+                if (optimisticEnabled && res) {
+                    optimistic!.resolve(nonce, {
+                        realId: res.id,
+                        createdAt: new Date(res.createdAt)
+                    });
+                }
+                router.refresh();
+            } catch (err) {
+                // Roll back: drop the optimistic message and restore the draft.
+                if (optimisticEnabled) optimistic!.fail(nonce);
+                editorRef.current?.setContent(html);
+                setEditor({ html, isEmpty: wasEmpty, mentionIds });
+                setItems(sentItems);
+                toast.error(err instanceof Error ? err.message : "Failed to send message");
+            } finally {
+                if (!optimisticEnabled) setPending(false);
+            }
+        })();
     }
 
     return (
