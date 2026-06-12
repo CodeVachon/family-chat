@@ -149,7 +149,10 @@ export function Composer({
                 height: a.height,
                 originalFilename: a.originalFilename,
                 thumbnailUrl: null,
-                createdAt: now
+                createdAt: now,
+                likeCount: 0,
+                likedByMe: false,
+                commentCount: 0
             })),
             reactions: [],
             mentions: mentionIds.map((uid) => ({
