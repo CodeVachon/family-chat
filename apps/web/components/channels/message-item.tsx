@@ -101,7 +101,7 @@ function MessageContent({
     return (
         <div data-component="MessageContent">
             {message.body && <MessageBody body={message.body} mentions={message.mentions} />}
-            <MessageAttachments attachments={message.attachments} />
+            <MessageAttachments attachments={message.attachments} canPost={canReact} />
             {message.linkPreviews.map((preview) => (
                 <LinkCard key={preview.id} preview={preview} />
             ))}

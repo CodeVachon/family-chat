@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 
+import { attachmentComments, attachmentLikes } from "./attachment-engagement";
 import { attachments } from "./attachments";
 import { account, session, user } from "./auth";
 import { channelMembers, channels } from "./channels";
@@ -102,13 +103,37 @@ export const mentionsRelations = relations(mentions, ({ one }) => ({
     })
 }));
 
-export const attachmentsRelations = relations(attachments, ({ one }) => ({
+export const attachmentsRelations = relations(attachments, ({ one, many }) => ({
     message: one(messages, {
         fields: [attachments.messageId],
         references: [messages.id]
     }),
     uploader: one(user, {
         fields: [attachments.uploaderId],
+        references: [user.id]
+    }),
+    likes: many(attachmentLikes),
+    comments: many(attachmentComments)
+}));
+
+export const attachmentLikesRelations = relations(attachmentLikes, ({ one }) => ({
+    attachment: one(attachments, {
+        fields: [attachmentLikes.attachmentId],
+        references: [attachments.id]
+    }),
+    user: one(user, {
+        fields: [attachmentLikes.userId],
+        references: [user.id]
+    })
+}));
+
+export const attachmentCommentsRelations = relations(attachmentComments, ({ one }) => ({
+    attachment: one(attachments, {
+        fields: [attachmentComments.attachmentId],
+        references: [attachments.id]
+    }),
+    author: one(user, {
+        fields: [attachmentComments.authorUserId],
         references: [user.id]
     })
 }));

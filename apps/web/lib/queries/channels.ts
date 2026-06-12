@@ -4,6 +4,8 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql, type SQL }
 
 import { db } from "@workspace/db/client";
 import {
+    attachmentComments,
+    attachmentLikes,
     channelMembers,
     channels,
     linkPreviews,
@@ -72,8 +74,48 @@ async function decorateMessages(rows: RawMessageRow[], userId: string) {
         for (const p of previews) previewByUrl.set(p.url, p);
     }
 
+    // Per-attachment like/comment aggregates for the message's attachments.
+    const attachmentIds = rows.flatMap((r) => r.attachments.map((a) => a.id));
+    const likeByAttachment = new Map<string, { count: number; mine: boolean }>();
+    const commentCountByAttachment = new Map<string, number>();
+    if (attachmentIds.length > 0) {
+        const [likeRows, commentRows] = await Promise.all([
+            db
+                .select({
+                    attachmentId: attachmentLikes.attachmentId,
+                    count: sql<number>`count(*)::int`,
+                    mine: sql<boolean>`bool_or(${attachmentLikes.userId} = ${userId})`
+                })
+                .from(attachmentLikes)
+                .where(inArray(attachmentLikes.attachmentId, attachmentIds))
+                .groupBy(attachmentLikes.attachmentId),
+            db
+                .select({
+                    attachmentId: attachmentComments.attachmentId,
+                    count: sql<number>`count(*)::int`
+                })
+                .from(attachmentComments)
+                .where(
+                    and(
+                        inArray(attachmentComments.attachmentId, attachmentIds),
+                        isNull(attachmentComments.deletedAt)
+                    )
+                )
+                .groupBy(attachmentComments.attachmentId)
+        ]);
+        for (const l of likeRows)
+            likeByAttachment.set(l.attachmentId, { count: Number(l.count), mine: Boolean(l.mine) });
+        for (const c of commentRows) commentCountByAttachment.set(c.attachmentId, Number(c.count));
+    }
+
     return rows.map((r) => ({
         ...r,
+        attachments: r.attachments.map((a) => ({
+            ...a,
+            likeCount: likeByAttachment.get(a.id)?.count ?? 0,
+            likedByMe: likeByAttachment.get(a.id)?.mine ?? false,
+            commentCount: commentCountByAttachment.get(a.id) ?? 0
+        })),
         reactions: aggregateReactions(r.reactions, userId),
         mentions: r.mentions.map(
             (m): MentionSummary => ({
@@ -363,6 +405,8 @@ export async function listChannelMessages(
 }
 
 export type ChannelMessage = Awaited<ReturnType<typeof listChannelMessages>>[number];
+/** A message attachment decorated with its per-attachment like/comment counts. */
+export type ChannelAttachment = ChannelMessage["attachments"][number];
 
 /** A thread: the root message followed by its replies, chronologically. */
 export async function listThreadMessages(rootId: string, userId: string) {
