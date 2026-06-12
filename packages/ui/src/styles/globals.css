@@ -145,18 +145,34 @@
    unlayered too so the html[data-font-family] override (specificity 0,1,1)
    actually beats next/font's generated class (0,1,0). */
 
-/* Base font-size scale: rem-based Tailwind sizes scale with the root font-size,
-   so this resizes the whole UI uniformly. Set as a data attribute on <html>
-   server-side (no flash) and kept in sync by UserPrefsProvider. "default" =
-   browser default (100%). */
+/* Channel text-size scale: the preference drives a `--channel-font-scale`
+   variable (not the root font-size, which would zoom the whole app). The
+   `.channel-text-scale` class re-derives Tailwind v4's `--text-*` steps from it,
+   so only subtrees that opt in (the channel view) resize their text; line-heights
+   are unitless ratios and follow automatically. Set as a data attribute on
+   <html> server-side (no flash) and kept in sync by UserPrefsProvider.
+   "default" = 1 (browser default). Kept unlayered like the font-family rules. */
+html {
+    --channel-font-scale: 1;
+}
 html[data-font-size="small"] {
-    font-size: 87.5%;
+    --channel-font-scale: 0.875;
 }
 html[data-font-size="large"] {
-    font-size: 112.5%;
+    --channel-font-scale: 1.125;
 }
 html[data-font-size="xlarge"] {
-    font-size: 125%;
+    --channel-font-scale: 1.25;
+}
+
+.channel-text-scale {
+    --text-xs: calc(0.75rem * var(--channel-font-scale));
+    --text-sm: calc(0.875rem * var(--channel-font-scale));
+    --text-base: calc(1rem * var(--channel-font-scale));
+    --text-lg: calc(1.125rem * var(--channel-font-scale));
+    --text-xl: calc(1.25rem * var(--channel-font-scale));
+    --text-2xl: calc(1.5rem * var(--channel-font-scale));
+    --text-3xl: calc(1.875rem * var(--channel-font-scale));
 }
 
 /* Body font family: Figtree is the default (its variable already IS

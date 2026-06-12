@@ -105,7 +105,7 @@ export default async function ChannelPage({
     );
 
     return (
-        <div data-component="ChannelPage" className="flex h-full min-h-0">
+        <div data-component="ChannelPage" className="channel-text-scale flex h-full min-h-0">
             <div
                 className={cn(
                     "flex min-h-0 flex-1 flex-col",
