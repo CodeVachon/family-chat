@@ -54,6 +54,15 @@ export async function createChannel(formData: FormData) {
             role: "owner"
         });
 
+        // Announce the creator's join as the channel's first message, matching
+        // how every later join/leave is recorded.
+        await insertSystemMessage(tx, {
+            channelId: channel!.id,
+            event: "join",
+            subjectUserId: actor.id,
+            actorUserId: actor.id
+        });
+
         return channel!.id;
     });
 
