@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { AsYouType } from "libphonenumber-js";
 import { ImageIcon } from "lucide-react";
 
 import { TextField } from "@/components/auth/text-field";
@@ -13,7 +12,7 @@ import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateAvatar, updateProfile } from "@/lib/actions/preferences";
 import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
-import { formatPhoneDisplay } from "@/lib/phone";
+import { formatPhoneDisplay, formatPhoneInput } from "@/lib/phone";
 import {
     avatarUrl as avatarTransform,
     bannerUrl as bannerTransform,
@@ -292,7 +291,8 @@ export function ProfileForm({
                 label="Phone"
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(new AsYouType("US").input(e.target.value))}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => setPhone((p) => formatPhoneInput(p))}
                 placeholder="Optional"
                 maxLength={30}
             />
