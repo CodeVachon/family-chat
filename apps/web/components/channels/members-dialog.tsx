@@ -151,61 +151,72 @@ export function MembersDialog({
                 )}
 
                 <div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
-                    {members.map((m) => {
-                        const isOwner = m.role === "owner";
-                        const editable = canManage && !isOwner;
-                        const online = onlineUserIds.has(m.userId);
-                        return (
-                            <div
-                                key={m.userId}
-                                className="flex items-center gap-2 rounded-lg p-1.5"
-                            >
-                                <div className="relative">
-                                    <UserAvatar
+                    {[...members]
+                        .sort(
+                            (a, b) =>
+                                Number(onlineUserIds.has(b.userId)) -
+                                Number(onlineUserIds.has(a.userId))
+                        )
+                        .map((m) => {
+                            const isOwner = m.role === "owner";
+                            const editable = canManage && !isOwner;
+                            const online = onlineUserIds.has(m.userId);
+                            return (
+                                <div
+                                    key={m.userId}
+                                    className={cn(
+                                        "flex items-center gap-2 rounded-lg p-1.5",
+                                        !online && "opacity-60"
+                                    )}
+                                >
+                                    <div className="relative">
+                                        <UserAvatar
+                                            name={m.name}
+                                            colorHue={m.colorHue}
+                                            avatarUrl={m.avatarUrl}
+                                            className="size-7"
+                                        />
+                                        {online && (
+                                            <span
+                                                className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-green-500 ring-2 ring-popover"
+                                                title="Online"
+                                            />
+                                        )}
+                                    </div>
+                                    <UserName
                                         name={m.name}
                                         colorHue={m.colorHue}
-                                        avatarUrl={m.avatarUrl}
-                                        className="size-7"
+                                        className="flex-1 truncate text-sm"
                                     />
-                                    {online && (
-                                        <span
-                                            className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-green-500 ring-2 ring-popover"
-                                            title="Online"
-                                        />
+                                    {editable ? (
+                                        <select
+                                            defaultValue={m.role}
+                                            onChange={(e) =>
+                                                void changeRole(m.userId, e.target.value)
+                                            }
+                                            className={SELECT_CLASS}
+                                        >
+                                            <option value="admin">Admin</option>
+                                            <option value="user">User</option>
+                                            <option value="viewer">Viewer</option>
+                                        </select>
+                                    ) : (
+                                        <span className="text-xs text-muted-foreground capitalize">
+                                            {m.role}
+                                        </span>
+                                    )}
+                                    {editable && (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => void removeMember(m.userId)}
+                                        >
+                                            Remove
+                                        </Button>
                                     )}
                                 </div>
-                                <UserName
-                                    name={m.name}
-                                    colorHue={m.colorHue}
-                                    className="flex-1 truncate text-sm"
-                                />
-                                {editable ? (
-                                    <select
-                                        defaultValue={m.role}
-                                        onChange={(e) => void changeRole(m.userId, e.target.value)}
-                                        className={SELECT_CLASS}
-                                    >
-                                        <option value="admin">Admin</option>
-                                        <option value="user">User</option>
-                                        <option value="viewer">Viewer</option>
-                                    </select>
-                                ) : (
-                                    <span className="text-xs text-muted-foreground capitalize">
-                                        {m.role}
-                                    </span>
-                                )}
-                                {editable && (
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => void removeMember(m.userId)}
-                                    >
-                                        Remove
-                                    </Button>
-                                )}
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
                 </div>
             </DialogContent>
         </Dialog>
