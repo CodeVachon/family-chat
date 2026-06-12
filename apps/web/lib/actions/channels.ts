@@ -54,6 +54,15 @@ export async function createChannel(formData: FormData) {
             role: "owner"
         });
 
+        // Announce the creator's join as the channel's first message, matching
+        // how every later join/leave is recorded.
+        await insertSystemMessage(tx, {
+            channelId: channel!.id,
+            event: "join",
+            subjectUserId: actor.id,
+            actorUserId: actor.id
+        });
+
         return channel!.id;
     });
 
@@ -63,20 +72,36 @@ export async function createChannel(formData: FormData) {
 
 export async function updateChannel(formData: FormData) {
     const channelId = requireChannelId(formData);
-    await authorizeChannel(channelId, "channel:edit_settings");
+    const { user, channel } = await authorizeChannel(channelId, "channel:edit_settings");
 
     const input = parseChannelForm(formData);
-    await db
-        .update(channels)
-        .set({
-            name: input.name,
-            description: input.description,
-            color: input.color,
-            icon: input.icon,
-            isPrivate: input.isPrivate,
-            updatedAt: new Date()
-        })
-        .where(eq(channels.id, channelId));
+    const renamed = input.name !== channel.name;
+    const descriptionChanged = input.description !== channel.description;
+
+    await db.transaction(async (tx) => {
+        await tx
+            .update(channels)
+            .set({
+                name: input.name,
+                description: input.description,
+                color: input.color,
+                icon: input.icon,
+                isPrivate: input.isPrivate,
+                updatedAt: new Date()
+            })
+            .where(eq(channels.id, channelId));
+
+        // Announce a name/description change inline, attributed to the editor.
+        if (renamed || descriptionChanged) {
+            await insertSystemMessage(tx, {
+                channelId,
+                event: "channel_updated",
+                actorUserId: user.id,
+                ...(renamed ? { renamedTo: input.name } : {}),
+                ...(descriptionChanged ? { descriptionChanged: true } : {})
+            });
+        }
+    });
 
     revalidatePath("/channels");
     revalidatePath(`/channels/${channelId}`);
