@@ -28,6 +28,7 @@ function SidebarContents({
     user,
     channels,
     canAccessAdmin,
+    pendingApprovals,
     appName,
     appIconUrl,
     onNavigate
@@ -35,6 +36,7 @@ function SidebarContents({
     user: ShellUser;
     channels: SidebarChannel[];
     canAccessAdmin: boolean;
+    pendingApprovals: number;
     appName: string;
     appIconUrl: string | null;
     onNavigate?: () => void;
@@ -70,6 +72,7 @@ function SidebarContents({
                         avatarUrl: user.avatarUrl
                     }}
                     canAccessAdmin={canAccessAdmin}
+                    pendingApprovals={pendingApprovals}
                     onNavigate={onNavigate}
                 />
             </div>
@@ -81,6 +84,7 @@ type ShellContentProps = {
     user: ShellUser;
     channels: SidebarChannel[];
     canAccessAdmin: boolean;
+    pendingApprovals: number;
     appName: string;
     appIconUrl: string | null;
 };

@@ -12,6 +12,7 @@ import { auth } from "@/lib/auth";
 import { joinDefaultChannels } from "@/lib/channels/default-channels";
 import { requireApprovedUser } from "@/lib/dal";
 import { canApp, type AppAction } from "@/lib/permissions";
+import { getBroker } from "@/lib/realtime/broker";
 
 /**
  * Auto-join the default channels, best-effort. The approval/invite has already
@@ -45,6 +46,9 @@ async function adminAction(
     await run(getUserId(formData), actor.id);
     revalidatePath("/admin/approvals");
     revalidatePath("/admin/users");
+    // Membership/approval changed — refresh every client's shell so the staff
+    // pending-approvals badge (and member lists) stay current.
+    getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
 }
 
 /** Reject if the target is the application owner (owner is untouchable here). */
@@ -185,4 +189,5 @@ export async function inviteUser(input: unknown) {
 
     revalidatePath("/admin/users");
     revalidatePath("/admin/approvals");
+    getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
 }

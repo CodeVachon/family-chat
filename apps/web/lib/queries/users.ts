@@ -1,6 +1,6 @@
 import "server-only";
 
-import { asc, eq } from "drizzle-orm";
+import { asc, count, eq } from "drizzle-orm";
 
 import { db } from "@workspace/db/client";
 import { user as userTable } from "@workspace/db/schema";
@@ -12,4 +12,13 @@ export async function listApprovedUsers() {
         orderBy: asc(userTable.name),
         columns: { id: true, name: true }
     });
+}
+
+/** Number of users awaiting approval — drives the staff pending-actions badge. */
+export async function countPendingUsers(): Promise<number> {
+    const [row] = await db
+        .select({ value: count() })
+        .from(userTable)
+        .where(eq(userTable.approvalStatus, "pending"));
+    return row?.value ?? 0;
 }

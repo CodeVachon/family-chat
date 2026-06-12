@@ -7,14 +7,18 @@ import { isAppStaff } from "@/lib/permissions";
 import { getAppSettings } from "@/lib/queries/app-settings";
 import { listVisibleChannels } from "@/lib/queries/channels";
 import { getUserPreferences } from "@/lib/queries/preferences";
+import { countPendingUsers } from "@/lib/queries/users";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
     const user = await requireApprovedUser();
+    const isStaff = isAppStaff(user);
 
-    const [prefs, channels, appSettings] = await Promise.all([
+    const [prefs, channels, appSettings, pendingApprovals] = await Promise.all([
         getUserPreferences(user.id),
         listVisibleChannels(user.id),
-        getAppSettings()
+        getAppSettings(),
+        // Only staff can act on approvals, so only they need the count.
+        isStaff ? countPendingUsers() : Promise.resolve(0)
     ]);
 
     const sidebarChannels: SidebarChannel[] = channels.map((c) => ({
@@ -41,7 +45,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         avatarUrl: prefs.avatarUrl
                     }}
                     channels={sidebarChannels}
-                    canAccessAdmin={isAppStaff(user)}
+                    canAccessAdmin={isStaff}
+                    pendingApprovals={pendingApprovals}
                     appName={appSettings.name}
                     appIconUrl={appSettings.iconUrl}
                 >
