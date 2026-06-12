@@ -12,7 +12,10 @@ import type { ChannelMessage } from "@/lib/queries/channels";
  * dropped as soon as the server copy appears in the refetched list.
  */
 export type OptimisticMessage = ChannelMessage & {
-    pending: true;
+    /** True while the send is in flight (faded "Sending…" row); cleared by
+     * `resolve()` the instant the server confirms, so the row goes solid without
+     * waiting for the next router.refresh(). */
+    pending: boolean;
     nonce: string;
     realId?: string;
 };
@@ -44,7 +47,10 @@ export function OptimisticMessagesProvider({ children }: { children: React.React
     const resolve = useCallback((nonce: string, server: { realId: string; createdAt: Date }) => {
         // Adopt the persisted id (and createdAt) so that when the server copy
         // arrives in the refetched list it reconciles to the same React key —
-        // the row updates in place instead of remounting (no flicker).
+        // the row updates in place instead of remounting (no flicker). Clear
+        // `pending` here so the row goes solid the moment postMessage returns,
+        // rather than staying faded/"Sending…" until the first router.refresh()
+        // round-trips (the source of the perceived first-message delay).
         setPending((prev) =>
             prev.map((m) =>
                 m.nonce === nonce
@@ -52,7 +58,8 @@ export function OptimisticMessagesProvider({ children }: { children: React.React
                           ...m,
                           id: server.realId,
                           realId: server.realId,
-                          createdAt: server.createdAt
+                          createdAt: server.createdAt,
+                          pending: false
                       }
                     : m
             )
