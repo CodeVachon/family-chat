@@ -13,9 +13,11 @@ import { MessageBody } from "@/components/channels/message-body";
 import { MessageToolbar, type MessageViewer } from "@/components/channels/message-toolbar";
 import { ReactionBar } from "@/components/channels/reaction-bar";
 import { RichTextEditor, type EditorState } from "@/components/channels/rich-text-editor";
+import { YouTubeEmbed } from "@/components/channels/youtube-embed";
 import { Timestamp } from "@/components/preferences/user-prefs";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { editMessage } from "@/lib/actions/messages";
+import { youtubeId } from "@/lib/messaging/links";
 import { htmlToText, isHtmlBody, plainTextToHtml } from "@/lib/messaging/rich-text";
 import type { ChannelMessage, ThreadMessage } from "@/lib/queries/channels";
 import { Button } from "@workspace/ui/components/button";
@@ -104,9 +106,14 @@ function MessageContent({
             <MessageAttachments attachments={message.attachments} />
             {message.linkPreviews.length > 0 && (
                 <div className="my-1.5 flex flex-col gap-2">
-                    {message.linkPreviews.map((preview) => (
-                        <LinkCard key={preview.id} preview={preview} />
-                    ))}
+                    {message.linkPreviews.map((preview) => {
+                        const ytId = youtubeId(preview.url);
+                        return ytId ? (
+                            <YouTubeEmbed key={preview.id} id={ytId} />
+                        ) : (
+                            <LinkCard key={preview.id} preview={preview} />
+                        );
+                    })}
                 </div>
             )}
             {!pending && (
