@@ -82,6 +82,7 @@ export function ProfileForm({
     const [bio, setBio] = useState(initial.bio);
     const [phone, setPhone] = useState(initial.phone);
     const [uploading, setUploading] = useState(false);
+    const [bannerUploading, setBannerUploading] = useState(false);
     const [pending, setPending] = useState(false);
 
     // Avatar editor state. `editorSrc` is the image being cropped (a local
@@ -247,7 +248,7 @@ export function ProfileForm({
                     onChange={setBanner}
                     transform={bannerTransform}
                     uploadLabel="Upload banner"
-                    onUploadingChange={setUploading}
+                    onUploadingChange={setBannerUploading}
                     renderPreview={(url) => (
                         <div className="flex h-20 w-40 items-center justify-center overflow-hidden rounded-lg border bg-muted">
                             {url ? (
@@ -323,7 +324,10 @@ export function ProfileForm({
             </div>
 
             <div>
-                <Button onClick={() => void save()} disabled={pending || uploading}>
+                <Button
+                    onClick={() => void save()}
+                    disabled={pending || uploading || bannerUploading}
+                >
                     {pending ? "Saving…" : "Save changes"}
                 </Button>
             </div>
