@@ -102,9 +102,13 @@ function MessageContent({
         <div data-component="MessageContent">
             {message.body && <MessageBody body={message.body} mentions={message.mentions} />}
             <MessageAttachments attachments={message.attachments} />
-            {message.linkPreviews.map((preview) => (
-                <LinkCard key={preview.id} preview={preview} />
-            ))}
+            {message.linkPreviews.length > 0 && (
+                <div className="my-1.5 flex flex-col gap-2">
+                    {message.linkPreviews.map((preview) => (
+                        <LinkCard key={preview.id} preview={preview} />
+                    ))}
+                </div>
+            )}
             {!pending && (
                 <ReactionBar
                     messageId={message.id}
