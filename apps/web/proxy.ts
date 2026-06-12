@@ -42,7 +42,9 @@ function buildCsp(nonce: string): string {
         `connect-src 'self' https://api.cloudinary.com${isProd ? "" : " ws: wss:"}`,
         `worker-src 'self' blob:`,
         `manifest-src 'self'`,
-        `frame-src 'none'`,
+        // Only the privacy-enhanced YouTube embed origin (inline video players);
+        // no other framing is allowed.
+        `frame-src https://www.youtube-nocookie.com`,
         `object-src 'none'`,
         `base-uri 'self'`,
         `form-action 'self'`,
