@@ -21,6 +21,7 @@ import {
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { postMessage } from "@/lib/actions/messages";
 import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
+import { randomId } from "@/lib/uuid";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 
@@ -64,7 +65,7 @@ export function Composer({
         setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
 
     function startUpload(file: File) {
-        const id = crypto.randomUUID();
+        const id = randomId();
         const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
         setItems((prev) => [
             ...prev,
@@ -176,7 +177,7 @@ export function Composer({
         const attachmentsInput = readyAttachments;
 
         const optimisticEnabled = Boolean(optimistic && author);
-        const nonce = crypto.randomUUID();
+        const nonce = randomId();
 
         // Clear the composer immediately so sending feels instant.
         editorRef.current?.clear();
