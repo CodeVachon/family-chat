@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { AsYouType } from "libphonenumber-js";
 import { ImageIcon } from "lucide-react";
 
 import { TextField } from "@/components/auth/text-field";
@@ -12,6 +13,7 @@ import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateAvatar, updateProfile } from "@/lib/actions/preferences";
 import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
+import { formatPhoneDisplay } from "@/lib/phone";
 import {
     avatarUrl as avatarTransform,
     bannerUrl as bannerTransform,
@@ -80,7 +82,9 @@ export function ProfileForm({
     const [crop, setCrop] = useState<AvatarCrop | null>(initial.avatarCrop);
     const [banner, setBanner] = useState(initial.bannerUrl);
     const [bio, setBio] = useState(initial.bio);
-    const [phone, setPhone] = useState(initial.phone);
+    const [phone, setPhone] = useState(
+        initial.phone ? formatPhoneDisplay(initial.phone) : initial.phone
+    );
     const [uploading, setUploading] = useState(false);
     const [bannerUploading, setBannerUploading] = useState(false);
     const [pending, setPending] = useState(false);
@@ -288,7 +292,7 @@ export function ProfileForm({
                 label="Phone"
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(new AsYouType("US").input(e.target.value))}
                 placeholder="Optional"
                 maxLength={30}
             />

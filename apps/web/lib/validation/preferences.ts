@@ -1,3 +1,4 @@
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 
 export const DATE_TIME_FORMATS = ["relative", "12h", "24h"] as const;
@@ -28,6 +29,26 @@ const optionalText = (max: number) =>
         .nullable()
         .transform((v) => (v && v.length > 0 ? v : null));
 
+/**
+ * Optional phone field: accepts a user-entered number (formatted or not),
+ * defaults bare numbers to North America, and normalizes to canonical E.164 for
+ * storage. Empty → null; clearly-invalid input is rejected.
+ */
+const phoneField = z
+    .string()
+    .trim()
+    .max(30)
+    .nullable()
+    .transform((v, ctx) => {
+        if (!v) return null;
+        const parsed = parsePhoneNumberFromString(v, "US");
+        if (!parsed?.isValid()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid phone number" });
+            return z.NEVER;
+        }
+        return parsed.number; // E.164
+    });
+
 const avatarCropSchema = z.object({
     x: z.number().min(0),
     y: z.number().min(0),
@@ -44,7 +65,7 @@ export const profilePrefsSchema = z.object({
     // null (a field cleared in the form, which always sends every key) still
     // clears it. See `upsertPreferences`, which drops `undefined` keys.
     bio: optionalText(280).optional(),
-    phone: optionalText(30).optional(),
+    phone: phoneField.optional(),
     bannerUrl: z.string().url().nullable().optional(),
     // Raw uploaded image + manual crop, kept so the editor can be reopened.
     // Both null when the avatar is cleared or has no manual crop.
