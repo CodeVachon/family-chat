@@ -135,3 +135,15 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # Apply pending migrations (toggle with RUN_MIGRATIONS_ON_START), then exec the
 # Next standalone server. See docker-entrypoint.sh for the separate-step option.
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+# ── Nightly unread-digest cron (external) ───────────────────────────────────
+# The digest endpoint GET /api/cron/daily-digest is inert until something calls
+# it hourly. It must run at the TOP OF EVERY HOUR (it emails whichever opted-in
+# users are at their local midnight) and authenticate with the CRON_SECRET env
+# value. Wire it from outside the container — e.g. a host crontab entry:
+#
+#   0 * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+#       http://localhost:5766/api/cron/daily-digest > /dev/null
+#
+# or your platform's scheduler hitting the same URL. No CRON_SECRET ⇒ disabled
+# (the route 401s).

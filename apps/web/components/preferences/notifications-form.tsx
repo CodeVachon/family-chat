@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { updateNotifications } from "@/lib/actions/preferences";
@@ -10,6 +10,7 @@ import { NOTIFICATION_LEVELS, type NotificationLevel } from "@/lib/validation/pr
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@workspace/ui/components/radio-group";
+import { Switch } from "@workspace/ui/components/switch";
 
 const LEVEL_LABELS: Record<NotificationLevel, string> = {
     all: "All new messages",
@@ -20,11 +21,41 @@ const LEVEL_LABELS: Record<NotificationLevel, string> = {
 export function NotificationsForm({
     initial
 }: {
-    initial: { notificationLevel: NotificationLevel };
+    initial: {
+        notificationLevel: NotificationLevel;
+        dailyDigestEnabled: boolean;
+        timezone: string | null;
+    };
 }) {
     const router = useRouter();
     const [level, setLevel] = useState<NotificationLevel>(initial.notificationLevel);
+    const [digest, setDigest] = useState(initial.dailyDigestEnabled);
+    const [timezone, setTimezone] = useState(initial.timezone);
+    const [zones, setZones] = useState<string[]>([]);
     const [pending, setPending] = useState(false);
+
+    // Populate the zone list and default-fill the picker with the device zone
+    // client-side (avoids an SSR/CSR hydration mismatch on the detected value).
+    useEffect(() => {
+        try {
+            setZones(Intl.supportedValuesOf("timeZone"));
+        } catch {
+            setZones([]);
+        }
+        if (!timezone) {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz) setTimezone(tz);
+        }
+        // Only on mount; later edits come from the picker.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Ensure the stored value is always selectable even if it's not in the list.
+    const tzOptions = useMemo(() => {
+        const set = new Set(zones);
+        if (timezone) set.add(timezone);
+        return [...set];
+    }, [zones, timezone]);
     // Set once the user acts on push (we don't read it on mount to keep this
     // SSR-safe and avoid cascading effects).
     const [pushState, setPushState] = useState<
@@ -35,7 +66,11 @@ export function NotificationsForm({
     async function save() {
         setPending(true);
         try {
-            await updateNotifications({ notificationLevel: level });
+            await updateNotifications({
+                notificationLevel: level,
+                dailyDigestEnabled: digest,
+                timezone: timezone || null
+            });
             toast.success("Notification settings updated");
             router.refresh();
         } catch (err) {
@@ -80,6 +115,39 @@ export function NotificationsForm({
                         </label>
                     ))}
                 </RadioGroup>
+            </div>
+
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-1">
+                        <Label>Nightly digest email</Label>
+                        <p className="text-sm text-muted-foreground">
+                            A summary of your unread messages, emailed at midnight in your time
+                            zone. Off unless you turn it on; skipped when you have nothing unread.
+                        </p>
+                    </div>
+                    <Switch
+                        checked={digest}
+                        onCheckedChange={setDigest}
+                        aria-label="Nightly digest email"
+                    />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="timezone">Time zone</Label>
+                    <select
+                        id="timezone"
+                        value={timezone ?? ""}
+                        onChange={(e) => setTimezone(e.target.value)}
+                        className="h-9 rounded-md border bg-background px-3 text-sm shadow-xs"
+                    >
+                        {!timezone && <option value="">Select a time zone…</option>}
+                        {tzOptions.map((z) => (
+                            <option key={z} value={z}>
+                                {z}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div className="flex flex-col gap-2">

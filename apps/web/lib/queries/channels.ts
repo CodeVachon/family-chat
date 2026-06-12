@@ -138,6 +138,32 @@ export async function listVisibleChannels(userId: string) {
 
 export type VisibleChannel = Awaited<ReturnType<typeof listVisibleChannels>>[number];
 
+export type DigestChannel = {
+    id: string;
+    name: string;
+    unreadCount: number;
+    mentionCount: number;
+};
+
+/**
+ * The user's non-archived channels that currently have unread messages, most
+ * unread first — for the nightly digest email. Reuses {@link listVisibleChannels}'s
+ * unread logic (messages after `lastReadAt`, by others, non-deleted, non-system),
+ * so privacy is respected. Empty when the user is fully caught up.
+ */
+export async function listUnreadForDigest(userId: string): Promise<DigestChannel[]> {
+    const channels = await listVisibleChannels(userId);
+    return channels
+        .filter((c) => !c.isArchived && c.unreadCount > 0)
+        .map((c) => ({
+            id: c.id,
+            name: c.name,
+            unreadCount: c.unreadCount,
+            mentionCount: c.mentionCount
+        }))
+        .sort((a, b) => b.unreadCount - a.unreadCount);
+}
+
 /**
  * The id of the channel the user was most recently active in — the joined
  * `channel_members` row with the greatest `lastReadAt` whose channel still

@@ -15,9 +15,28 @@ export type NotificationLevel = (typeof NOTIFICATION_LEVELS)[number];
 export type FontSizeScale = (typeof FONT_SIZE_SCALES)[number];
 export type FontFamily = (typeof FONT_FAMILIES)[number];
 
+/** Whether a string is a valid IANA time zone the runtime recognizes. */
+function isValidTimeZone(tz: string): boolean {
+    try {
+        new Intl.DateTimeFormat("en-US", { timeZone: tz });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+const timezoneField = z.string().trim().max(64).refine(isValidTimeZone, "Invalid time zone");
+
 export const notificationPrefsSchema = z.object({
-    notificationLevel: z.enum(NOTIFICATION_LEVELS)
+    notificationLevel: z.enum(NOTIFICATION_LEVELS),
+    // Nightly unread-digest email opt-in + the user's IANA timezone. Optional so
+    // a partial payload preserves the stored value (see upsertPreferences).
+    dailyDigestEnabled: z.boolean().optional(),
+    timezone: timezoneField.nullable().optional()
 });
+
+/** Auto-capture of the user's detected timezone (only applied when unset). */
+export const timezoneCaptureSchema = z.object({ timezone: timezoneField });
 
 /** Trim, then collapse empty strings to null. */
 const optionalText = (max: number) =>

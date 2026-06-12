@@ -39,6 +39,50 @@ export async function sendEmail({ to, subject, html, fromName }: SendArgs): Prom
     }
 }
 
+/** Escape user-controlled text (e.g. channel names) before embedding in HTML. */
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+export type DigestChannelSummary = {
+    name: string;
+    unreadCount: number;
+    mentionCount: number;
+};
+
+/** Nightly unread-digest: total unread + per-channel counts + a link back in. */
+export function dailyDigestEmail(
+    appName: string,
+    recipientName: string,
+    channels: DigestChannelSummary[],
+    appUrl: string
+): { subject: string; html: string } {
+    const total = channels.reduce((sum, c) => sum + c.unreadCount, 0);
+    const rows = channels
+        .map((c) => {
+            const mentions =
+                c.mentionCount > 0
+                    ? ` — ${c.mentionCount} mention${c.mentionCount === 1 ? "" : "s"}`
+                    : "";
+            return `<li><strong>#${escapeHtml(c.name)}</strong>: ${c.unreadCount} unread${mentions}</li>`;
+        })
+        .join("");
+    return {
+        subject: `${total} unread message${total === 1 ? "" : "s"} in ${appName}`,
+        html: `
+            <p>Hi ${escapeHtml(recipientName)},</p>
+            <p>You have <strong>${total}</strong> unread message${total === 1 ? "" : "s"} waiting in ${appName}:</p>
+            <ul>${rows}</ul>
+            <p><a href="${appUrl}">Open ${appName}</a></p>
+            <p style="color:#888;font-size:12px">You're getting this because the nightly digest is on. Turn it off in Settings → Notifications.</p>
+        `
+    };
+}
+
 export function magicLinkEmail(url: string, appName: string): { subject: string; html: string } {
     return {
         subject: `Your ${appName} sign-in link`,

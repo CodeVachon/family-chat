@@ -1,5 +1,6 @@
 "use server";
 
+import { sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@workspace/db/client";
@@ -11,7 +12,8 @@ import {
     appearancePrefsSchema,
     avatarPrefsSchema,
     notificationPrefsSchema,
-    profilePrefsSchema
+    profilePrefsSchema,
+    timezoneCaptureSchema
 } from "@/lib/validation/preferences";
 
 async function upsertPreferences(userId: string, values: Record<string, unknown>) {
@@ -64,4 +66,22 @@ export async function updateNotifications(input: unknown) {
     const user = await requireApprovedUser();
     await upsertPreferences(user.id, data);
     revalidatePath("/", "layout");
+}
+
+/**
+ * Auto-capture the user's detected timezone — but only when it isn't already
+ * set, so a value the user picked in settings is never overwritten. Called from
+ * the client on app load.
+ */
+export async function captureTimezone(input: unknown) {
+    const { timezone } = timezoneCaptureSchema.parse(input);
+    const user = await requireApprovedUser();
+    await db
+        .insert(userPreferences)
+        .values({ userId: user.id, timezone })
+        .onConflictDoUpdate({
+            target: userPreferences.userId,
+            // Keep an existing (possibly user-chosen) value; only fill when null.
+            set: { timezone: sql`coalesce(${userPreferences.timezone}, ${timezone})` }
+        });
 }
