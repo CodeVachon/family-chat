@@ -42,7 +42,9 @@ const phoneField = z
     .transform((v, ctx) => {
         if (!v) return null;
         const parsed = parsePhoneNumberFromString(v, "US");
-        if (!parsed?.isValid()) {
+        // `isPossible` (right shape/length) rather than the strict `isValid`
+        // (exact metadata pattern), so real numbers aren't falsely rejected.
+        if (!parsed?.isPossible()) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid phone number" });
             return z.NEVER;
         }
