@@ -13,16 +13,29 @@ import { channels } from "./channels";
 import { messageType } from "./enums";
 
 /**
- * Payload for a `system` message. The subject is the user who joined/left (also
- * stored as `authorUserId` so existing author joins keep working); the actor is
- * who performed the action — equal to the subject for a self join/leave,
- * different when an admin adds or removes someone.
+ * Payload for a `system` message.
+ *
+ * join/leave: the subject is the user who joined/left (also stored as
+ * `authorUserId` so existing author joins keep working); the actor performed the
+ * action — equal to the subject for a self join/leave, different when an admin
+ * adds or removes someone.
+ *
+ * channel_updated: the actor changed the channel's name and/or description (the
+ * message is authored by the actor). `renamedTo` is the new name when it
+ * changed; `descriptionChanged` is set when the description changed.
  */
-export type SystemMessageEvent = {
-    event: "join" | "leave";
-    subjectUserId: string;
-    actorUserId: string;
-};
+export type SystemMessageEvent =
+    | {
+          event: "join" | "leave";
+          subjectUserId: string;
+          actorUserId: string;
+      }
+    | {
+          event: "channel_updated";
+          actorUserId: string;
+          renamedTo?: string;
+          descriptionChanged?: boolean;
+      };
 
 export const messages = pgTable(
     "messages",
