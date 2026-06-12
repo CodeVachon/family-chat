@@ -10,7 +10,7 @@ import { TextField } from "@/components/auth/text-field";
 import { AvatarEditor } from "@/components/upload/avatar-editor";
 import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
-import { updateProfile } from "@/lib/actions/preferences";
+import { updateAvatar, updateProfile } from "@/lib/actions/preferences";
 import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
 import {
     avatarUrl as avatarTransform,
@@ -132,23 +132,40 @@ export function ProfileForm({
                 src = res.secureUrl;
             }
             if (!src) return;
-            // Persist the source so subsequent edits restore this crop — this is
-            // what backfills avatarSourceUrl for previously-sourceless avatars.
+            const nextAvatar = avatarTransform(src, pixels);
+            // The avatar is its own saved unit — persist immediately so "Save
+            // crop" sticks without needing the form's "Save changes". The
+            // source is kept so subsequent edits restore this crop (and it
+            // backfills avatarSourceUrl for previously-sourceless avatars).
+            await updateAvatar({
+                avatarUrl: nextAvatar,
+                avatarSourceUrl: src,
+                avatarCrop: pixels
+            });
             setSourceUrl(src);
             setCrop(pixels);
-            setAvatar(avatarTransform(src, pixels));
+            setAvatar(nextAvatar);
+            toast.success("Avatar updated");
+            router.refresh();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Upload failed");
+            toast.error(err instanceof Error ? err.message : "Couldn't update avatar");
         } finally {
             setUploading(false);
             closeEditor();
         }
     }
 
-    function removeAvatar() {
-        setAvatar(null);
-        setSourceUrl(null);
-        setCrop(null);
+    async function removeAvatar() {
+        try {
+            await updateAvatar({ avatarUrl: null, avatarSourceUrl: null, avatarCrop: null });
+            setAvatar(null);
+            setSourceUrl(null);
+            setCrop(null);
+            toast.success("Avatar removed");
+            router.refresh();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Couldn't remove avatar");
+        }
     }
 
     async function save() {
@@ -208,7 +225,7 @@ export function ProfileForm({
                         </Button>
                     )}
                     {avatar && (
-                        <Button type="button" variant="ghost" onClick={removeAvatar}>
+                        <Button type="button" variant="ghost" onClick={() => void removeAvatar()}>
                             Remove
                         </Button>
                     )}
