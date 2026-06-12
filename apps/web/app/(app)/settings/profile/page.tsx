@@ -12,6 +12,11 @@ export default async function ProfileSettingsPage() {
                 displayName: prefs.displayName ?? "",
                 colorHue: prefs.colorHue,
                 avatarUrl: prefs.avatarUrl,
+                avatarSourceUrl: prefs.avatarSourceUrl,
+                avatarCrop: prefs.avatarCrop,
+                bannerUrl: prefs.bannerUrl,
+                bio: prefs.bio ?? "",
+                phone: prefs.phone ?? "",
                 fallbackName: user.name
             }}
         />

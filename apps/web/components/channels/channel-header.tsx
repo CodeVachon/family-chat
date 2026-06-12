@@ -1,5 +1,6 @@
 import { Lock, Settings } from "lucide-react";
 
+import { SidebarToggle } from "@/components/app/mobile-sidebar";
 import { ChannelDialog } from "@/components/channels/channel-dialog";
 import { ChannelIcon } from "@/components/channels/channel-icon";
 import { MembersAvatarGroup } from "@/components/channels/members-avatar-group";
@@ -34,6 +35,7 @@ export function ChannelHeader({
             data-component="ChannelHeader"
             className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4"
         >
+            <SidebarToggle className="-ml-1.5 md:hidden" />
             <ChannelIcon icon={channel.icon} color={channel.color} className="size-5 shrink-0" />
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">

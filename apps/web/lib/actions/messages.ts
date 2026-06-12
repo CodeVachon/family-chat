@@ -67,7 +67,7 @@ export async function postMessage(input: unknown) {
         data.mentionUserIds.filter((id) => inBody.has(id))
     );
 
-    const messageId = await db.transaction(async (tx) => {
+    const created = await db.transaction(async (tx) => {
         const [message] = await tx
             .insert(messages)
             .values({
@@ -76,7 +76,7 @@ export async function postMessage(input: unknown) {
                 threadRootId: data.threadRootId ?? null,
                 body
             })
-            .returning({ id: messages.id });
+            .returning({ id: messages.id, createdAt: messages.createdAt });
 
         if (data.attachments.length > 0) {
             await tx.insert(attachments).values(
@@ -104,10 +104,10 @@ export async function postMessage(input: unknown) {
                 );
         }
 
-        return message!.id;
+        return message!;
     });
 
-    void ensureMessageLinkPreviews(messageId, htmlToText(body));
+    void ensureMessageLinkPreviews(created.id, htmlToText(body));
     // Background push (mentions always; new messages for 'all'-level members).
     void pushForNewMessage({
         channelId: data.channelId,
@@ -115,6 +115,10 @@ export async function postMessage(input: unknown) {
         mentionedUserIds: mentionIds
     });
     revalidatePath(`/channels/${data.channelId}`);
+
+    // Returned so the client can reconcile its optimistic message with the
+    // persisted row (exact id match, no duplicate on the next refetch).
+    return { id: created.id, createdAt: created.createdAt };
 }
 
 export async function editMessage(input: unknown) {

@@ -83,16 +83,61 @@ function InlineEditor({
     );
 }
 
+/** The body of a live (non-deleted, non-editing) message: text, attachments,
+ * link previews, reactions, and the reply affordance. */
+function MessageContent({
+    message,
+    canReact,
+    showReply,
+    replyCount,
+    pending
+}: {
+    message: ItemMessage;
+    canReact: boolean;
+    showReply: boolean;
+    replyCount: number;
+    pending: boolean;
+}) {
+    return (
+        <div data-component="MessageContent">
+            {message.body && <MessageBody body={message.body} mentions={message.mentions} />}
+            <MessageAttachments attachments={message.attachments} />
+            {message.linkPreviews.map((preview) => (
+                <LinkCard key={preview.id} preview={preview} />
+            ))}
+            {!pending && (
+                <ReactionBar
+                    messageId={message.id}
+                    reactions={message.reactions}
+                    canReact={canReact}
+                />
+            )}
+            {showReply && replyCount > 0 && (
+                <Link
+                    href={`?thread=${message.id}`}
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                    <MessageSquare className="size-3.5" />
+                    {replyCount} {replyCount === 1 ? "reply" : "replies"}
+                </Link>
+            )}
+        </div>
+    );
+}
+
 export function MessageItem({
     message,
     viewer,
     members = [],
-    showReply = true
+    showReply = true,
+    pending = false
 }: {
     message: ItemMessage;
     viewer: MessageViewer;
     members?: ComposerMember[];
     showReply?: boolean;
+    /** Optimistically rendered, not yet confirmed by the server. */
+    pending?: boolean;
 }) {
     const router = useRouter();
     const [editing, setEditing] = useState(false);
@@ -106,7 +151,7 @@ export function MessageItem({
     const inThread = !showReply;
 
     function handleTouchTap(e: React.MouseEvent) {
-        if (inThread || editing || deleted) return;
+        if (pending || inThread || editing || deleted) return;
         if (!window.matchMedia("(hover: none)").matches) return;
         const target = e.target as HTMLElement;
         if (target.closest("a, button, [role='button'], input, textarea, [contenteditable='true']"))
@@ -120,19 +165,34 @@ export function MessageItem({
             onClick={handleTouchTap}
             className={cn(
                 "group relative flex gap-3 px-4 py-1.5 hover:bg-muted/30",
-                message.mentionsMe && !deleted && "bg-amber-400/10"
+                message.mentionsMe && !deleted && "bg-amber-400/10",
+                pending && "opacity-60"
             )}
         >
-            <UserAvatar
-                name={name}
-                colorHue={hue}
-                avatarUrl={prefs?.avatarUrl}
-                className="mt-0.5 size-9"
-            />
+            <Link href={`?profile=${message.authorUserId}`} className="mt-0.5 shrink-0">
+                <UserAvatar
+                    name={name}
+                    colorHue={hue}
+                    avatarUrl={prefs?.avatarUrl}
+                    className="size-9"
+                />
+            </Link>
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                    <UserName name={name} colorHue={hue} className="text-sm" />
-                    <Timestamp date={message.createdAt} className="text-xs text-muted-foreground" />
+                    <Link
+                        href={`?profile=${message.authorUserId}`}
+                        className="rounded-sm hover:underline"
+                    >
+                        <UserName name={name} colorHue={hue} className="text-sm" />
+                    </Link>
+                    {pending ? (
+                        <span className="text-xs text-muted-foreground">Sending…</span>
+                    ) : (
+                        <Timestamp
+                            date={message.createdAt}
+                            className="text-xs text-muted-foreground"
+                        />
+                    )}
                     {message.editedAt && !deleted && (
                         <span className="text-xs text-muted-foreground">(edited)</span>
                     )}
@@ -149,33 +209,17 @@ export function MessageItem({
                         onDone={() => setEditing(false)}
                     />
                 ) : (
-                    <>
-                        {message.body && (
-                            <MessageBody body={message.body} mentions={message.mentions} />
-                        )}
-                        <MessageAttachments attachments={message.attachments} />
-                        {message.linkPreviews.map((preview) => (
-                            <LinkCard key={preview.id} preview={preview} />
-                        ))}
-                        <ReactionBar
-                            messageId={message.id}
-                            reactions={message.reactions}
-                            canReact={viewer.canPost}
-                        />
-                        {showReply && replyCount > 0 && (
-                            <Link
-                                href={`?thread=${message.id}`}
-                                className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                            >
-                                <MessageSquare className="size-3.5" />
-                                {replyCount} {replyCount === 1 ? "reply" : "replies"}
-                            </Link>
-                        )}
-                    </>
+                    <MessageContent
+                        message={message}
+                        canReact={viewer.canPost}
+                        showReply={showReply}
+                        replyCount={replyCount}
+                        pending={pending}
+                    />
                 )}
             </div>
 
-            {!deleted && !editing && (
+            {!deleted && !editing && !pending && (
                 <MessageToolbar
                     messageId={message.id}
                     authorUserId={message.authorUserId}

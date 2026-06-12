@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } 
 import type { ComposerMember } from "@/components/channels/composer";
 import { MessageList } from "@/components/channels/message-list";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
+import { useOptimisticMessages } from "@/components/channels/optimistic-messages";
 import { loadOlderChannelMessages } from "@/lib/actions/channel-messages";
 import type { ChannelMessage } from "@/lib/queries/channels";
 import { Button } from "@workspace/ui/components/button";
@@ -46,7 +47,9 @@ export function MessageHistory({
     const [older, setOlder] = useState<ChannelMessage[]>([]);
     const [hasMore, setHasMore] = useState(initialHasMore);
     const [pending, startTransition] = useTransition();
+    const optimistic = useOptimisticMessages();
 
+    const rootRef = useRef<HTMLDivElement>(null);
     const anchorRef = useRef<HTMLDivElement>(null);
     // Scroll height captured just before a fetch, so we can re-anchor after.
     const restore = useRef<{ el: HTMLElement; prevHeight: number } | null>(null);
@@ -62,10 +65,45 @@ export function MessageHistory({
         setOlder((prev) => (prev.length ? sortDedup([...prev, ...carried]) : prev));
     }, [initialMessages]);
 
-    const messages = useMemo(
+    const serverMessages = useMemo(
         () => (older.length ? sortDedup([...older, ...initialMessages]) : initialMessages),
         [older, initialMessages]
     );
+
+    // Merge still-unconfirmed optimistic messages after the server rows (their
+    // createdAt is "now", so they belong at the bottom). An entry whose
+    // persisted row has already arrived in the refetched list is hidden here —
+    // so there's never a duplicate — and garbage-collected by the effect below.
+    const optimisticPending = optimistic?.pending;
+    const messages = useMemo(() => {
+        if (!optimisticPending?.length) return serverMessages;
+        const serverIds = new Set(serverMessages.map((m) => m.id));
+        const visible = optimisticPending.filter((m) => !(m.realId && serverIds.has(m.realId)));
+        return visible.length ? [...serverMessages, ...visible] : serverMessages;
+    }, [serverMessages, optimisticPending]);
+
+    // Once a confirmed optimistic entry's persisted row is in the server list,
+    // drop it from the pending set.
+    useEffect(() => {
+        if (!optimistic || !optimisticPending?.length) return;
+        if (!optimisticPending.some((m) => m.realId)) return;
+        const serverIds = new Set(serverMessages.map((m) => m.id));
+        if (optimisticPending.some((m) => m.realId && serverIds.has(m.realId))) {
+            optimistic.reconcile(serverIds);
+        }
+    }, [optimistic, optimisticPending, serverMessages]);
+
+    // When a freshly-sent optimistic message appears, pin the scroller to the
+    // bottom so the sender sees it immediately.
+    const pendingVisibleCount = messages.length - serverMessages.length;
+    const prevPendingVisible = useRef(0);
+    useEffect(() => {
+        if (pendingVisibleCount > prevPendingVisible.current) {
+            const el = rootRef.current?.closest<HTMLElement>('[data-component="MessageScroller"]');
+            if (el) el.scrollTop = el.scrollHeight;
+        }
+        prevPendingVisible.current = pendingVisibleCount;
+    }, [pendingVisibleCount]);
 
     function loadOlder() {
         const oldest = messages[0];
@@ -93,7 +131,7 @@ export function MessageHistory({
     }, [messages]);
 
     return (
-        <div data-component="MessageHistory">
+        <div data-component="MessageHistory" ref={rootRef}>
             {hasMore && (
                 <div ref={anchorRef} className="flex justify-center py-2">
                     <Button variant="ghost" size="sm" onClick={loadOlder} disabled={pending}>

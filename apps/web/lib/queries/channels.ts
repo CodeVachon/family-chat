@@ -9,6 +9,8 @@ import {
     linkPreviews,
     mentions,
     messages,
+    user,
+    userPreferences,
     type MessageReaction
 } from "@workspace/db/schema";
 import { extractUrls } from "@/lib/messaging/links";
@@ -135,6 +137,126 @@ export async function listVisibleChannels(userId: string) {
 }
 
 export type VisibleChannel = Awaited<ReturnType<typeof listVisibleChannels>>[number];
+
+/**
+ * The id of the channel the user was most recently active in — the joined
+ * `channel_members` row with the greatest `lastReadAt` whose channel still
+ * exists and isn't archived. Used to drop the user back into that channel on
+ * app entry. Returns null for a new user (or if their last channel was
+ * deleted/archived/left).
+ */
+export async function resolveLastActiveChannelId(userId: string): Promise<string | null> {
+    const rows = await db
+        .select({ channelId: channelMembers.channelId })
+        .from(channelMembers)
+        .innerJoin(channels, eq(channels.id, channelMembers.channelId))
+        .where(
+            and(
+                eq(channelMembers.userId, userId),
+                isNotNull(channelMembers.lastReadAt),
+                eq(channels.isArchived, false)
+            )
+        )
+        .orderBy(desc(channelMembers.lastReadAt))
+        .limit(1);
+    return rows[0]?.channelId ?? null;
+}
+
+export type ActivityPreview = {
+    id: string;
+    snippet: string;
+    createdAt: Date;
+    authorName: string;
+    authorHue: number;
+};
+
+export type ChannelActivity = VisibleChannel & {
+    lastMessageAt: Date | null;
+    previews: ActivityPreview[];
+};
+
+/** Max characters of a preview snippet shown in the activity feed. */
+const PREVIEW_SNIPPET_LENGTH = 140;
+
+/**
+ * The recent-activity feed: the user's visible, non-archived channels ordered
+ * by latest message time (channels with no messages last), each with up to
+ * `perChannel` most-recent message previews (chronological). Previews exclude
+ * system and deleted messages and thread replies; privacy is enforced by
+ * {@link listVisibleChannels} (private channels the user can't see never
+ * appear).
+ */
+export async function listChannelActivity(
+    userId: string,
+    opts: { perChannel?: number; maxChannels?: number } = {}
+): Promise<ChannelActivity[]> {
+    const perChannel = opts.perChannel ?? 3;
+    const maxChannels = opts.maxChannels ?? 20;
+
+    const visible = (await listVisibleChannels(userId)).filter((c) => !c.isArchived);
+    if (visible.length === 0) return [];
+    const ids = visible.map((c) => c.id);
+
+    // Latest `perChannel` top-level, non-system, non-deleted messages per
+    // channel, via a row-number window so it's a single round-trip.
+    const rows = (await db.execute(sql`
+        SELECT id, channel_id, body, created_at, author_name, author_hue
+        FROM (
+            SELECT m.id,
+                   m.channel_id,
+                   m.body,
+                   m.created_at,
+                   COALESCE(${userPreferences.displayName}, ${user.name}) AS author_name,
+                   COALESCE(${userPreferences.colorHue}, 220) AS author_hue,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY m.channel_id
+                       ORDER BY m.created_at DESC, m.id DESC
+                   ) AS rn
+            FROM ${messages} m
+            JOIN ${user} ON ${user.id} = m.author_user_id
+            LEFT JOIN ${userPreferences} ON ${userPreferences.userId} = m.author_user_id
+            WHERE m.channel_id IN (${sql.join(
+                ids.map((id) => sql`${id}`),
+                sql`, `
+            )})
+              AND m.deleted_at IS NULL
+              AND m.thread_root_id IS NULL
+              AND m.type <> 'system'
+        ) ranked
+        WHERE ranked.rn <= ${perChannel}
+        ORDER BY created_at ASC
+    `)) as unknown as Array<{
+        id: string;
+        channel_id: string;
+        body: string;
+        created_at: Date;
+        author_name: string;
+        author_hue: number;
+    }>;
+
+    // Bucket previews per channel (rows arrive oldest→newest, the display order).
+    const byChannel = new Map<string, ActivityPreview[]>();
+    for (const r of rows) {
+        const list = byChannel.get(r.channel_id) ?? [];
+        list.push({
+            id: r.id,
+            snippet: htmlToText(r.body).slice(0, PREVIEW_SNIPPET_LENGTH),
+            createdAt: new Date(r.created_at),
+            authorName: r.author_name,
+            authorHue: Number(r.author_hue)
+        });
+        byChannel.set(r.channel_id, list);
+    }
+
+    return visible
+        .map((channel) => {
+            const previews = byChannel.get(channel.id) ?? [];
+            const last = previews[previews.length - 1];
+            return { ...channel, previews, lastMessageAt: last ? last.createdAt : null };
+        })
+        .sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0))
+        .slice(0, maxChannels);
+}
 
 /**
  * Just the IDs of channels visible to a user (public + private they belong to).

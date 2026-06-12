@@ -20,7 +20,11 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { extractMentionIds } from "@/lib/messaging/rich-text";
 import { cn } from "@workspace/ui/lib/utils";
 
-export type RichTextEditorHandle = { clear: () => void; focus: () => void };
+export type RichTextEditorHandle = {
+    clear: () => void;
+    focus: () => void;
+    setContent: (html: string) => void;
+};
 
 export type EditorState = { html: string; isEmpty: boolean; mentionIds: string[] };
 
@@ -252,9 +256,11 @@ export const RichTextEditor = forwardRef<
             autofocus: autoFocus ? "end" : false,
             editorProps: {
                 attributes: {
-                    // text-base (16px) on mobile prevents iOS Safari's focus auto-zoom;
-                    // shrink to text-sm on larger screens where zoom isn't triggered.
-                    class: "tiptap-content max-h-48 min-h-10 overflow-y-auto px-3 py-2 text-base outline-none sm:text-sm"
+                    // Mobile font-size floored at 16px (max(1rem,16px)) so iOS
+                    // never auto-zooms on focus, even when the base font scale
+                    // shrinks the UI (Small); shrink to text-sm at md+ (matching
+                    // Input/Textarea) where zoom isn't triggered.
+                    class: "tiptap-content max-h-48 min-h-10 overflow-y-auto px-3 py-2 text-[max(1rem,16px)] outline-none md:text-sm"
                 },
                 handleKeyDown: (_view, event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
@@ -273,7 +279,8 @@ export const RichTextEditor = forwardRef<
 
         useImperativeHandle(ref, () => ({
             clear: () => editor?.commands.clearContent(true),
-            focus: () => editor?.commands.focus("end")
+            focus: () => editor?.commands.focus("end"),
+            setContent: (html: string) => editor?.commands.setContent(html)
         }));
 
         return (

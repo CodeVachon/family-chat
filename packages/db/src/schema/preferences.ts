@@ -1,6 +1,9 @@
-import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+
+/** A square avatar crop in natural-image pixel coordinates (from the editor). */
+export type AvatarCrop = { x: number; y: number; width: number; height: number };
 
 /**
  * Per-user preferences (1:1 with `user`). Kept separate from the Better-Auth
@@ -19,7 +22,22 @@ export const userPreferences = pgTable("user_preferences", {
     // 'all' | 'mentions' | 'none'
     notificationLevel: text("notification_level").notNull().default("mentions"),
     colorHue: integer("color_hue").notNull().default(220),
+    // Readability prefs. fontSizeScale scales the whole UI (small|default|large|
+    // xlarge); fontFamily picks the body typeface from an offered set.
+    fontSizeScale: text("font_size_scale").notNull().default("default"),
+    fontFamily: text("font_family").notNull().default("figtree"),
+    // Delivery URL actually rendered (transform baked in). For a manually
+    // cropped avatar this carries the c_crop chain; otherwise the g_auto square.
     avatarUrl: text("avatar_url"),
+    // Raw (untransformed) Cloudinary URL of the uploaded image + the manual crop
+    // rectangle, kept so the editor can be reopened and the crop re-adjusted
+    // non-destructively. Null when the user has no manual crop.
+    avatarSourceUrl: text("avatar_source_url"),
+    avatarCrop: jsonb("avatar_crop").$type<AvatarCrop>(),
+    // Public profile fields (shown in the profile side panel).
+    bio: text("bio"),
+    phone: text("phone"),
+    bannerUrl: text("banner_url"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow()
 });

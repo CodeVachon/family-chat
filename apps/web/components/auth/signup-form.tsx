@@ -14,6 +14,8 @@ export function SignupForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [pending, setPending] = useState(false);
+    const [verifySent, setVerifySent] = useState(false);
+    const [resending, setResending] = useState(false);
 
     async function handleSignup(e: React.FormEvent) {
         e.preventDefault();
@@ -22,20 +24,66 @@ export function SignupForm() {
             return;
         }
         setPending(true);
-        const { error } = await authClient.signUp.email({
+        const { error: signUpError } = await authClient.signUp.email({
             name,
             email,
             password,
             callbackURL: "/"
         });
-        setPending(false);
-        if (error) {
-            toast.error(error.message ?? "Could not create account.");
+        if (signUpError) {
+            setPending(false);
+            toast.error(signUpError.message ?? "Could not create account.");
             return;
         }
-        // New accounts are pending approval; proxy + DAL route them to /pending.
+
+        // Sign-up requires email verification, so no session is created yet and a
+        // verification email has been sent. Attempt a sign-in: the exempt owner
+        // (auto-verified) goes straight in; everyone else is unverified and is
+        // shown the "verify your email" prompt.
+        const { error: signInError } = await authClient.signIn.email({
+            email,
+            password,
+            callbackURL: "/"
+        });
+        setPending(false);
+        if (signInError) {
+            if (signInError.code === "EMAIL_NOT_VERIFIED") {
+                setVerifySent(true);
+                return;
+            }
+            toast.error(signInError.message ?? "Could not sign in.");
+            return;
+        }
+        // Owner / already-verified: proxy + DAL route them onward.
         router.push("/");
         router.refresh();
+    }
+
+    async function handleResend() {
+        setResending(true);
+        const { error } = await authClient.sendVerificationEmail({ email, callbackURL: "/" });
+        setResending(false);
+        if (error) {
+            toast.error(error.message ?? "Could not resend the email.");
+            return;
+        }
+        toast.success("Verification email sent.");
+    }
+
+    if (verifySent) {
+        return (
+            <div data-component="SignupForm" className="flex flex-col gap-4 text-sm">
+                <p className="font-medium">Check your email</p>
+                <p className="text-muted-foreground">
+                    We sent a verification link to <span className="font-medium">{email}</span>.
+                    Click it to verify your address — then an administrator will review your account
+                    for access.
+                </p>
+                <Button type="button" variant="outline" onClick={handleResend} disabled={resending}>
+                    {resending ? "Sending…" : "Resend verification email"}
+                </Button>
+            </div>
+        );
     }
 
     return (

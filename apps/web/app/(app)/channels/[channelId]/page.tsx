@@ -5,23 +5,45 @@ import { MarkReadOnView } from "@/components/channels/mark-read-on-view";
 import { MessageHistory } from "@/components/channels/message-history";
 import { MessageScroller } from "@/components/channels/message-scroller";
 import type { MessageViewer } from "@/components/channels/message-toolbar";
+import { OptimisticMessagesProvider } from "@/components/channels/optimistic-messages";
 import { ThreadPanel } from "@/components/channels/thread-panel";
 import { TypingIndicator } from "@/components/channels/typing-indicator";
+import { ProfilePanel } from "@/components/profile/profile-panel";
 import { authorizeChannel } from "@/lib/dal";
 import { canInChannel } from "@/lib/permissions";
 import { CHANNEL_PAGE_SIZE, listChannelMembers, listChannelMessages } from "@/lib/queries/channels";
 import { listApprovedUsers } from "@/lib/queries/users";
 import { cn } from "@workspace/ui/lib/utils";
 
+import type { ComposerAuthor } from "@/components/channels/composer";
+
+type SidebarMember = { userId: string; name: string; colorHue: number; avatarUrl: string | null };
+
+/** The sending user's display identity for optimistic messages, derived from
+ * their own channel-member row (falling back to the bare session user). */
+function composerAuthorFor(
+    userId: string,
+    userName: string,
+    members: SidebarMember[]
+): ComposerAuthor {
+    const self = members.find((m) => m.userId === userId);
+    return {
+        id: userId,
+        name: self?.name ?? userName,
+        colorHue: self?.colorHue ?? 220,
+        avatarUrl: self?.avatarUrl ?? null
+    };
+}
+
 export default async function ChannelPage({
     params,
     searchParams
 }: {
     params: Promise<{ channelId: string }>;
-    searchParams: Promise<{ thread?: string }>;
+    searchParams: Promise<{ thread?: string; profile?: string }>;
 }) {
     const { channelId } = await params;
-    const { thread: threadId } = await searchParams;
+    const { thread: threadId, profile: profileId } = await searchParams;
     const { user, channel, membership } = await authorizeChannel(channelId, "channel:view");
 
     const canPost = canInChannel(user, membership, channel, "channel:post");
@@ -53,14 +75,43 @@ export default async function ChannelPage({
         .filter((m) => m.userId !== user.id)
         .map((m) => ({ id: m.userId, name: m.name }));
 
+    // Your display identity, used to render an optimistic message before the
+    // server confirms it.
+    const composerAuthor = composerAuthorFor(user.id, user.name, members);
+
     const memberIds = new Set(memberRows.map((m) => m.userId));
     const addableUsers = approvedUsers.filter((u) => !memberIds.has(u.id));
 
     const latestMessageId = messages.length > 0 ? messages[messages.length - 1]!.id : null;
 
+    const composerArea = canPost ? (
+        <Composer
+            channelId={channel.id}
+            channelName={channel.name}
+            members={composerMembers}
+            author={composerAuthor}
+        />
+    ) : canJoin ? (
+        <div className="flex items-center justify-between gap-3 border-t bg-background p-3">
+            <p className="text-sm text-muted-foreground">Join this channel to send messages.</p>
+            <JoinButton channelId={channel.id} />
+        </div>
+    ) : (
+        <div className="border-t bg-background p-3 text-center text-sm text-muted-foreground">
+            {channel.isArchived
+                ? "This channel is archived."
+                : "You don't have permission to post here."}
+        </div>
+    );
+
     return (
         <div data-component="ChannelPage" className="flex h-full min-h-0">
-            <div className={cn("flex min-h-0 flex-1 flex-col", threadId && "hidden lg:flex")}>
+            <div
+                className={cn(
+                    "flex min-h-0 flex-1 flex-col",
+                    (threadId || profileId) && "hidden lg:flex"
+                )}
+            >
                 {membership && (
                     <MarkReadOnView channelId={channel.id} latestMessageId={latestMessageId} />
                 )}
@@ -72,44 +123,33 @@ export default async function ChannelPage({
                     addableUsers={addableUsers}
                 />
 
-                <MessageScroller
-                    bottomKey={`${latestMessageId}:${messages.length}`}
-                    accentColor={channel.color}
-                >
-                    <MessageHistory
-                        channelId={channel.id}
-                        initialMessages={messages}
-                        initialHasMore={messages.length >= CHANNEL_PAGE_SIZE}
-                        viewer={viewer}
-                        members={composerMembers}
-                    />
-                </MessageScroller>
+                <OptimisticMessagesProvider>
+                    <MessageScroller
+                        bottomKey={`${latestMessageId}:${messages.length}`}
+                        accentColor={channel.color}
+                    >
+                        <MessageHistory
+                            channelId={channel.id}
+                            initialMessages={messages}
+                            initialHasMore={messages.length >= CHANNEL_PAGE_SIZE}
+                            viewer={viewer}
+                            members={composerMembers}
+                        />
+                    </MessageScroller>
 
-                <TypingIndicator channelId={channel.id} />
+                    <TypingIndicator channelId={channel.id} />
 
-                {canPost ? (
-                    <Composer
-                        channelId={channel.id}
-                        channelName={channel.name}
-                        members={composerMembers}
-                    />
-                ) : canJoin ? (
-                    <div className="flex items-center justify-between gap-3 border-t bg-background p-3">
-                        <p className="text-sm text-muted-foreground">
-                            Join this channel to send messages.
-                        </p>
-                        <JoinButton channelId={channel.id} />
-                    </div>
-                ) : (
-                    <div className="border-t bg-background p-3 text-center text-sm text-muted-foreground">
-                        {channel.isArchived
-                            ? "This channel is archived."
-                            : "You don't have permission to post here."}
-                    </div>
-                )}
+                    {composerArea}
+                </OptimisticMessagesProvider>
             </div>
 
-            {threadId && (
+            {profileId ? (
+                <ProfilePanel
+                    userId={profileId}
+                    viewerId={user.id}
+                    closeHref={`/channels/${channel.id}`}
+                />
+            ) : threadId ? (
                 <ThreadPanel
                     channelId={channel.id}
                     channelName={channel.name}
@@ -118,7 +158,7 @@ export default async function ChannelPage({
                     members={composerMembers}
                     canPost={canPost}
                 />
-            )}
+            ) : null}
         </div>
     );
 }

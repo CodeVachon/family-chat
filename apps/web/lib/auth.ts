@@ -9,7 +9,13 @@ import { magicLink } from "better-auth/plugins";
 import { count, eq } from "drizzle-orm";
 
 import { bootstrapFirstRun } from "./channels/default-channels";
-import { magicLinkEmail, resetPasswordEmail, sendEmail, verificationEmail } from "./email";
+import {
+    changeEmailConfirmationEmail,
+    magicLinkEmail,
+    resetPasswordEmail,
+    sendEmail,
+    verificationEmail
+} from "./email";
 
 /** Current application name (for email branding), falling back to the default. */
 async function appName(): Promise<string> {
@@ -34,9 +40,12 @@ export const auth = betterAuth({
 
     emailAndPassword: {
         enabled: true,
-        // The admin approval gate is the real access control, so we don't block
-        // sign-in on email verification. A verification email is still available.
-        requireEmailVerification: false,
+        // Self sign-ups must verify their email before they can sign in. The
+        // admin-approval gate still applies afterwards (verify → pending →
+        // approved). The first owner and invited users are created
+        // `emailVerified: true`, and magic-link sign-in implies a verified
+        // email, so none of them hit this gate.
+        requireEmailVerification: true,
         sendResetPassword: async ({ user, url }) => {
             const name = await appName();
             const { subject, html } = resetPasswordEmail(url, name);
@@ -45,6 +54,10 @@ export const auth = betterAuth({
     },
 
     emailVerification: {
+        // Email the verification link on sign-up, and sign the user in once they
+        // click it (they then land on `/` → pending until an admin approves).
+        sendOnSignUp: true,
+        autoSignInAfterVerification: true,
         sendVerificationEmail: async ({ user, url }) => {
             const name = await appName();
             const { subject, html } = verificationEmail(url, name);
@@ -55,6 +68,16 @@ export const auth = betterAuth({
     // Custom application fields exposed on the session. `input: false` keeps them
     // out of user-controlled signup payloads — they're set server-side only.
     user: {
+        // Changing email is gated behind a confirmation link sent to the
+        // CURRENT (verified) address; the change only commits once it's clicked.
+        changeEmail: {
+            enabled: true,
+            sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+                const name = await appName();
+                const { subject, html } = changeEmailConfirmationEmail(url, name, newEmail);
+                await sendEmail({ to: user.email, subject, html, fromName: name });
+            }
+        },
         additionalFields: {
             appRole: {
                 type: "string",
@@ -95,7 +118,10 @@ export const auth = betterAuth({
                                 ...user,
                                 appRole: "owner",
                                 approvalStatus: "approved",
-                                approvedAt: new Date()
+                                approvedAt: new Date(),
+                                // The owner is exempt from email verification so
+                                // first-run setup is never blocked.
+                                emailVerified: true
                             }
                         };
                     }
