@@ -142,7 +142,8 @@ export function AppearanceForm({
             <div className="flex flex-col gap-3">
                 <Label>Text size</Label>
                 <p className="text-sm text-muted-foreground">
-                    Scales the whole app. Larger sizes can help readability.
+                    Resizes the conversation text (messages, composer, threads). Larger sizes can
+                    help readability; app chrome stays fixed.
                 </p>
                 <RadioGroup value={fontSize} onValueChange={onFontSizeChange}>
                     {FONT_SIZE_SCALES.map((o) => (
