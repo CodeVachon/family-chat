@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 
@@ -38,6 +38,13 @@ export const userPreferences = pgTable("user_preferences", {
     bio: text("bio"),
     phone: text("phone"),
     bannerUrl: text("banner_url"),
+    // Nightly unread-digest email. Opt-in (off by default). `timezone` is the
+    // user's IANA zone (e.g. America/Toronto) so the digest fires at their local
+    // midnight; auto-captured on first load if unset. `lastDigestSentOn` is the
+    // user's local date (YYYY-MM-DD) of the last digest sent, for idempotency.
+    dailyDigestEnabled: boolean("daily_digest_enabled").notNull().default(false),
+    timezone: text("timezone"),
+    lastDigestSentOn: text("last_digest_sent_on"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow()
 });

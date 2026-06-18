@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { captureTimezone } from "@/lib/actions/preferences";
 import { formatTimestamp } from "@/lib/format";
 import type { ResolvedPreferences } from "@/lib/queries/preferences";
 
@@ -39,6 +40,16 @@ export function UserPrefsProvider({
         el.dataset.fontSize = prefs.fontSizeScale;
         el.dataset.fontFamily = prefs.fontFamily;
     }, [prefs.fontSizeScale, prefs.fontFamily]);
+
+    // Auto-capture the device timezone once, if the user has none stored yet
+    // (needed to time the nightly digest at their local midnight). The action
+    // only fills a null value, so a timezone chosen in settings is never
+    // clobbered.
+    useEffect(() => {
+        if (prefs.timezone) return;
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) void captureTimezone({ timezone: tz }).catch(() => undefined);
+    }, [prefs.timezone]);
 
     // Keep relative timestamps fresh.
     useEffect(() => {
