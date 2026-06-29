@@ -1,5 +1,6 @@
 import "server-only";
 
+import { passkey } from "@better-auth/passkey";
 import { db } from "@workspace/db/client";
 import * as schema from "@workspace/db/schema";
 import { betterAuth } from "better-auth";
@@ -166,6 +167,12 @@ export const auth = betterAuth({
                 const { subject, html } = magicLinkEmail(url, name);
                 await sendEmail({ to: email, subject, html, fromName: name });
             }
+        }),
+        // WebAuthn passkeys (Face ID / Touch ID / security keys). rpID and the
+        // expected origin are derived from the request/baseURL per environment,
+        // so the same config works for localhost, LAN, and production.
+        passkey({
+            rpName: "Family Chat"
         }),
         // nextCookies() must be last so server actions can set the session cookie.
         nextCookies()
