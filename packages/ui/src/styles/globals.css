@@ -154,6 +154,12 @@
    "default" = 1 (browser default). Kept unlayered like the font-family rules. */
 html {
     --channel-font-scale: 1;
+    /* Channel messages read their font-size from these root-level variables so
+       the size scales with the preference without depending on a scoped wrapper.
+       Derived from --channel-font-scale, so changing the scale on <html> below
+       re-resolves them wherever they're used (text-sm / text-xs equivalents). */
+    --channel-message-font-size: calc(0.875rem * var(--channel-font-scale));
+    --channel-message-meta-font-size: calc(0.75rem * var(--channel-font-scale));
 }
 html[data-font-size="small"] {
     --channel-font-scale: 0.875;
@@ -163,6 +169,17 @@ html[data-font-size="large"] {
 }
 html[data-font-size="xlarge"] {
     --channel-font-scale: 1.25;
+}
+
+/* Channel message text + metadata. Unitless line-heights mirror Tailwind's
+   text-sm / text-xs ratios so spacing follows the scaled font-size. */
+.channel-message-text {
+    font-size: var(--channel-message-font-size);
+    line-height: 1.4286;
+}
+.channel-message-meta {
+    font-size: var(--channel-message-meta-font-size);
+    line-height: 1.3333;
 }
 
 .channel-text-scale {
