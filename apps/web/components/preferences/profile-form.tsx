@@ -4,21 +4,14 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { ImageIcon } from "lucide-react";
-
+import { BannerField } from "@/components/preferences/banner-field";
 import { TextField } from "@/components/auth/text-field";
 import { AvatarEditor } from "@/components/upload/avatar-editor";
-import { ImageUploadField } from "@/components/upload/image-upload-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateAvatar, updateProfile } from "@/lib/actions/preferences";
 import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
 import { formatPhoneDisplay, formatPhoneInput } from "@/lib/phone";
-import {
-    avatarUrl as avatarTransform,
-    bannerUrl as bannerTransform,
-    originalUrl,
-    type AvatarCrop
-} from "@/lib/cloudinary/url";
+import { avatarUrl as avatarTransform, originalUrl, type AvatarCrop } from "@/lib/cloudinary/url";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
 import { Textarea } from "@workspace/ui/components/textarea";
@@ -67,6 +60,8 @@ export function ProfileForm({
         avatarSourceUrl: string | null;
         avatarCrop: AvatarCrop | null;
         bannerUrl: string | null;
+        bannerSourceUrl: string | null;
+        bannerCrop: AvatarCrop | null;
         bio: string;
         phone: string;
         fallbackName: string;
@@ -79,13 +74,11 @@ export function ProfileForm({
     const [avatar, setAvatar] = useState(initial.avatarUrl);
     const [sourceUrl, setSourceUrl] = useState(initial.avatarSourceUrl);
     const [crop, setCrop] = useState<AvatarCrop | null>(initial.avatarCrop);
-    const [banner, setBanner] = useState(initial.bannerUrl);
     const [bio, setBio] = useState(initial.bio);
     const [phone, setPhone] = useState(
         initial.phone ? formatPhoneDisplay(initial.phone) : initial.phone
     );
     const [uploading, setUploading] = useState(false);
-    const [bannerUploading, setBannerUploading] = useState(false);
     const [pending, setPending] = useState(false);
 
     // Avatar editor state. `editorSrc` is the image being cropped (a local
@@ -181,7 +174,6 @@ export function ProfileForm({
                 avatarUrl: avatar,
                 avatarSourceUrl: sourceUrl,
                 avatarCrop: crop,
-                bannerUrl: banner,
                 bio: bio.trim() || null,
                 phone: phone.trim() || null
             });
@@ -244,26 +236,11 @@ export function ProfileForm({
                 onComplete={(pixels) => void onCropComplete(pixels)}
             />
 
-            <div className="flex flex-col gap-2">
-                <Label>Profile banner</Label>
-                <ImageUploadField
-                    value={banner}
-                    onChange={setBanner}
-                    transform={bannerTransform}
-                    uploadLabel="Upload banner"
-                    onUploadingChange={setBannerUploading}
-                    renderPreview={(url) => (
-                        <div className="flex h-20 w-40 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-                            {url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={url} alt="" className="size-full object-cover" />
-                            ) : (
-                                <ImageIcon className="size-6 text-muted-foreground" />
-                            )}
-                        </div>
-                    )}
-                />
-            </div>
+            <BannerField
+                initialBannerUrl={initial.bannerUrl}
+                initialSourceUrl={initial.bannerSourceUrl}
+                initialCrop={initial.bannerCrop}
+            />
 
             <TextField
                 id="displayName"
@@ -328,10 +305,7 @@ export function ProfileForm({
             </div>
 
             <div>
-                <Button
-                    onClick={() => void save()}
-                    disabled={pending || uploading || bannerUploading}
-                >
+                <Button onClick={() => void save()} disabled={pending || uploading}>
                     {pending ? "Saving…" : "Save changes"}
                 </Button>
             </div>

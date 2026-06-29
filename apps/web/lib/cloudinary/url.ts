@@ -75,7 +75,21 @@ export function avatarUrl(secureUrl: string, crop?: AvatarCrop | null): string {
     return withTransform(secureUrl, "c_fill,g_auto,w_256,h_256,q_auto,f_auto");
 }
 
-/** Wide profile banner crop (social-card header). */
-export function bannerUrl(secureUrl: string): string {
+/**
+ * Wide (3:1) profile banner delivery URL. With a manual `crop` (from the banner
+ * editor) it crops to that exact rectangle then fits to 1500×500; without one it
+ * falls back to the content-aware `g_auto` fill. Pass the RAW Cloudinary URL.
+ */
+export function bannerUrl(secureUrl: string, crop?: AvatarCrop | null): string {
+    if (crop) {
+        const x = Math.max(0, Math.round(crop.x));
+        const y = Math.max(0, Math.round(crop.y));
+        const w = Math.max(1, Math.round(crop.width));
+        const h = Math.max(1, Math.round(crop.height));
+        return withTransform(
+            secureUrl,
+            `c_crop,x_${x},y_${y},w_${w},h_${h}/c_fill,w_1500,h_500,q_auto,f_auto`
+        );
+    }
     return withTransform(secureUrl, "c_fill,g_auto,w_1500,h_500,q_auto,f_auto");
 }
