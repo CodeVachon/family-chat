@@ -37,6 +37,12 @@ const TYPING_TTL_MS = 5000;
 const TYPING_THROTTLE_MS = 3000;
 const REFRESH_DEBOUNCE_MS = 150;
 const RECONNECT_DEBOUNCE_MS = 250;
+// A mentioned 'all'-level member receives both a `message.created` and a
+// `mention` event for the same message (separate NOTIFYs from one transaction,
+// `message.created` delivered first). Briefly hold the generic "new message"
+// toast so an immediately-following `mention` for the same message can cancel
+// it — the mention is the more specific notification and wins.
+const MENTION_DEDUP_WINDOW_MS = 500;
 
 type TypingMap = Map<string, Map<string, { name: string; expiresAt: number }>>;
 
@@ -61,6 +67,11 @@ export function RealtimeProvider({
     const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastTypingSent = useRef(0);
+    // Pending "new message" toasts awaiting a possible same-message mention.
+    const pendingMessageToasts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+    // messageIds already notified as a mention, to suppress a `message.created`
+    // that arrives after the mention (e.g. reordered across a reconnect).
+    const mentionedMessageIds = useRef<Map<string, number>>(new Map());
     // Read the latest level inside the (long-lived) EventSource handler.
     const levelRef = useRef(notificationLevel);
     useEffect(() => {
@@ -88,18 +99,75 @@ export function RealtimeProvider({
         return typeof window !== "undefined" && window.location.pathname.includes(channelId);
     }, []);
 
+    // A mention is the more specific notification: show it, and (by messageId)
+    // cancel a held "new message" toast or suppress one arriving just after.
+    const notifyMention = useCallback(
+        (event: { channelId: string; channelName?: string; messageId?: string }) => {
+            if (event.messageId) {
+                const pending = pendingMessageToasts.current.get(event.messageId);
+                if (pending) {
+                    clearTimeout(pending);
+                    pendingMessageToasts.current.delete(event.messageId);
+                }
+                mentionedMessageIds.current.set(
+                    event.messageId,
+                    Date.now() + MENTION_DEDUP_WINDOW_MS
+                );
+            }
+            notify(
+                "New mention",
+                event.channelName
+                    ? `You were mentioned in #${event.channelName}`
+                    : "You were mentioned",
+                event.channelId
+            );
+        },
+        [notify]
+    );
+
+    // Show a generic "new message" toast, but hold it briefly so a same-message
+    // mention can win the dedup (and skip outright if the mention already fired).
+    const notifyNewMessage = useCallback(
+        (channelId: string, messageId?: string) => {
+            if (!messageId) {
+                notify("New message", "You have a new message", channelId);
+                return;
+            }
+            if (mentionedMessageIds.current.has(messageId)) {
+                mentionedMessageIds.current.delete(messageId);
+                return;
+            }
+            const timer = setTimeout(() => {
+                pendingMessageToasts.current.delete(messageId);
+                // Re-check at fire time: the user may have opened the channel
+                // during the dedup window, which should suppress the toast.
+                if (viewingChannel(channelId)) return;
+                notify("New message", "You have a new message", channelId);
+            }, MENTION_DEDUP_WINDOW_MS);
+            pendingMessageToasts.current.set(messageId, timer);
+        },
+        [notify, viewingChannel]
+    );
+
     const maybeNotify = useCallback(
-        (event: { type: string; channelId?: string; channelName?: string; actorId?: string }) => {
+        (event: {
+            type: string;
+            channelId?: string;
+            channelName?: string;
+            actorId?: string;
+            messageId?: string;
+        }) => {
             const level = levelRef.current;
             if (level === "none" || !event.channelId) return;
+
+            // Drop expired dedup markers so the map can't grow unbounded.
+            const now = Date.now();
+            for (const [id, expiry] of mentionedMessageIds.current) {
+                if (expiry <= now) mentionedMessageIds.current.delete(id);
+            }
+
             if (event.type === "mention") {
-                notify(
-                    "New mention",
-                    event.channelName
-                        ? `You were mentioned in #${event.channelName}`
-                        : "You were mentioned",
-                    event.channelId
-                );
+                notifyMention({ ...event, channelId: event.channelId });
             } else if (
                 event.type === "message.created" &&
                 level === "all" &&
@@ -107,10 +175,10 @@ export function RealtimeProvider({
                 event.actorId !== userId &&
                 !viewingChannel(event.channelId)
             ) {
-                notify("New message", "You have a new message", event.channelId);
+                notifyNewMessage(event.channelId, event.messageId);
             }
         },
-        [notify, userId, viewingChannel]
+        [notifyMention, notifyNewMessage, userId, viewingChannel]
     );
 
     const scheduleRefresh = useCallback(() => {
@@ -158,6 +226,7 @@ export function RealtimeProvider({
                 channelId?: string;
                 channelName?: string;
                 actorId?: string;
+                messageId?: string;
                 userId?: string;
                 name?: string;
                 online?: boolean;
@@ -201,7 +270,12 @@ export function RealtimeProvider({
             }
         };
 
-        return () => source.close();
+        const pending = pendingMessageToasts.current;
+        return () => {
+            source.close();
+            for (const timer of pending.values()) clearTimeout(timer);
+            pending.clear();
+        };
     }, [userId, scheduleRefresh, scheduleReconnect, addTyping, maybeNotify, connectionEpoch]);
 
     // Expire stale typing entries.
