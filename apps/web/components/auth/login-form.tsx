@@ -15,6 +15,7 @@ export function LoginForm() {
     const [password, setPassword] = useState("");
     const [pending, setPending] = useState(false);
     const [magicPending, setMagicPending] = useState(false);
+    const [passkeyPending, setPasskeyPending] = useState(false);
     const [verifyNeeded, setVerifyNeeded] = useState(false);
     const { resending, resend } = useResendVerification(email);
 
@@ -30,6 +31,23 @@ export function LoginForm() {
                 return;
             }
             toast.error(error.message ?? "Could not sign in.");
+            return;
+        }
+        router.push("/");
+        router.refresh();
+    }
+
+    async function handlePasskeyLogin() {
+        if (typeof window.PublicKeyCredential === "undefined") {
+            toast.error("This browser doesn't support passkeys.");
+            return;
+        }
+        setPasskeyPending(true);
+        const result = await authClient.signIn.passkey();
+        setPasskeyPending(false);
+        // A dismissed OS prompt or no matching passkey resolves to an error here.
+        if (result?.error) {
+            toast.error(result.error.message ?? "Could not sign in with a passkey.");
             return;
         }
         router.push("/");
@@ -106,6 +124,14 @@ export function LoginForm() {
                 disabled={magicPending}
             >
                 {magicPending ? "Sending…" : "Email me a magic link"}
+            </Button>
+            <Button
+                type="button"
+                variant="outline"
+                onClick={handlePasskeyLogin}
+                disabled={passkeyPending}
+            >
+                {passkeyPending ? "Waiting for device…" : "Sign in with a passkey"}
             </Button>
         </form>
     );

@@ -28,6 +28,8 @@ export type ResolvedPreferences = {
     bio: string | null;
     phone: string | null;
     bannerUrl: string | null;
+    bannerSourceUrl: string | null;
+    bannerCrop: AvatarCrop | null;
 };
 
 /**
@@ -48,7 +50,9 @@ const DEFAULT_PREFERENCES: ResolvedPreferences = {
     avatarCrop: null,
     bio: null,
     phone: null,
-    bannerUrl: null
+    bannerUrl: null,
+    bannerSourceUrl: null,
+    bannerCrop: null
 };
 
 export const getUserPreferences = cache(async (userId: string): Promise<ResolvedPreferences> => {
@@ -73,6 +77,8 @@ export const getUserPreferences = cache(async (userId: string): Promise<Resolved
         avatarCrop: row.avatarCrop,
         bio: row.bio,
         phone: row.phone,
-        bannerUrl: row.bannerUrl
+        bannerUrl: row.bannerUrl,
+        bannerSourceUrl: row.bannerSourceUrl,
+        bannerCrop: row.bannerCrop
     };
 });

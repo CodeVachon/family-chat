@@ -10,6 +10,7 @@ import { getBroker } from "@/lib/realtime/broker";
 import {
     appearancePrefsSchema,
     avatarPrefsSchema,
+    bannerPrefsSchema,
     notificationPrefsSchema,
     profilePrefsSchema
 } from "@/lib/validation/preferences";
@@ -46,6 +47,20 @@ export async function updateProfile(input: unknown) {
  */
 export async function updateAvatar(input: unknown) {
     const data = avatarPrefsSchema.parse(input);
+    const user = await requireApprovedUser();
+    await upsertPreferences(user.id, data);
+    revalidatePath("/", "layout");
+    getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
+}
+
+/**
+ * Persist just the banner (its delivery URL + the raw source/crop kept for
+ * re-editing), mirroring `updateAvatar`. The banner editor's "Save crop" /
+ * "Remove" commit immediately via this, independently of the profile form's
+ * "Save changes", and only these three keys are written.
+ */
+export async function updateBanner(input: unknown) {
+    const data = bannerPrefsSchema.parse(input);
     const user = await requireApprovedUser();
     await upsertPreferences(user.id, data);
     revalidatePath("/", "layout");

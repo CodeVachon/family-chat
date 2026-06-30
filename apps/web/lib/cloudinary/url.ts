@@ -53,8 +53,23 @@ export function pdfPageUrl(secureUrl: string, page: number): string {
     return withTransform(secureUrl, `pg_${page},w_1000,q_auto,f_jpg`);
 }
 
-/** A square crop rectangle in natural-image pixels (mirrors db `AvatarCrop`). */
+/** A crop rectangle in natural-image pixels (mirrors db `AvatarCrop`). */
 export type AvatarCrop = { x: number; y: number; width: number; height: number };
+
+/**
+ * Crop to a manual rectangle (rounded/clamped to safe integers) then fit to
+ * `w`×`h` — the shared body of the avatar/banner delivery URLs.
+ */
+function croppedFill(secureUrl: string, crop: AvatarCrop, w: number, h: number): string {
+    const x = Math.max(0, Math.round(crop.x));
+    const y = Math.max(0, Math.round(crop.y));
+    const cw = Math.max(1, Math.round(crop.width));
+    const ch = Math.max(1, Math.round(crop.height));
+    return withTransform(
+        secureUrl,
+        `c_crop,x_${x},y_${y},w_${cw},h_${ch}/c_fill,w_${w},h_${h},q_auto,f_auto`
+    );
+}
 
 /**
  * Square avatar delivery URL. With a manual `crop` (from the avatar editor) it
@@ -62,20 +77,18 @@ export type AvatarCrop = { x: number; y: number; width: number; height: number }
  * the face-aware `g_auto` square. Pass the RAW Cloudinary secure URL.
  */
 export function avatarUrl(secureUrl: string, crop?: AvatarCrop | null): string {
-    if (crop) {
-        const x = Math.max(0, Math.round(crop.x));
-        const y = Math.max(0, Math.round(crop.y));
-        const w = Math.max(1, Math.round(crop.width));
-        const h = Math.max(1, Math.round(crop.height));
-        return withTransform(
-            secureUrl,
-            `c_crop,x_${x},y_${y},w_${w},h_${h}/c_fill,w_256,h_256,q_auto,f_auto`
-        );
-    }
-    return withTransform(secureUrl, "c_fill,g_auto,w_256,h_256,q_auto,f_auto");
+    return crop
+        ? croppedFill(secureUrl, crop, 256, 256)
+        : withTransform(secureUrl, "c_fill,g_auto,w_256,h_256,q_auto,f_auto");
 }
 
-/** Wide profile banner crop (social-card header). */
-export function bannerUrl(secureUrl: string): string {
-    return withTransform(secureUrl, "c_fill,g_auto,w_1500,h_500,q_auto,f_auto");
+/**
+ * Wide (3:1) profile banner delivery URL. With a manual `crop` (from the banner
+ * editor) it crops to that exact rectangle then fits to 1500×500; without one it
+ * falls back to the content-aware `g_auto` fill. Pass the RAW Cloudinary URL.
+ */
+export function bannerUrl(secureUrl: string, crop?: AvatarCrop | null): string {
+    return crop
+        ? croppedFill(secureUrl, crop, 1500, 500)
+        : withTransform(secureUrl, "c_fill,g_auto,w_1500,h_500,q_auto,f_auto");
 }
