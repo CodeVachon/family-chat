@@ -22,8 +22,6 @@
       "dependencies": {
         "@better-auth/passkey": "1.6.14",
         "@sentry/nextjs": "^10.57.0",
-        "@simplewebauthn/browser": "^13.3.0",
-        "@simplewebauthn/server": "^13.3.2",
         "@tiptap/core": "^3.26.0",
         "@tiptap/extension-mention": "^3.26.0",
         "@tiptap/extensions": "^3.26.0",
