@@ -1,6 +1,6 @@
 {
-  "id": "bc5020a2-a67f-4089-8d8b-de3ee550bfdf",
-  "prevId": "887e3359-d5eb-4fcf-8afb-d49ceb045bbb",
+  "id": "2d4571ec-6bf8-4378-9a12-44139fda3484",
+  "prevId": "bc5020a2-a67f-4089-8d8b-de3ee550bfdf",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -574,6 +574,18 @@
         "banner_url": {
           "name": "banner_url",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "banner_source_url": {
+          "name": "banner_source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "banner_crop": {
+          "name": "banner_crop",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

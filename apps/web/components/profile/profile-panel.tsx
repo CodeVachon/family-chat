@@ -2,8 +2,8 @@ import { Pencil, X } from "lucide-react";
 import Link from "next/link";
 
 import { ChannelIcon } from "@/components/channels/channel-icon";
+import { ProfileFiles } from "@/components/profile/profile-files";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
-import { fullUrl, thumbUrl } from "@/lib/cloudinary/url";
 import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { getUserProfile } from "@/lib/queries/profile";
 
@@ -145,42 +145,7 @@ export async function ProfilePanel({
                                 <h3 className="text-xs font-medium text-muted-foreground uppercase">
                                     Files
                                 </h3>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {profile.files.map((f) =>
-                                        f.kind === "image" ? (
-                                            <a
-                                                key={f.id}
-                                                href={fullUrl(f.secureUrl)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="aspect-square overflow-hidden rounded-lg border bg-muted"
-                                            >
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img
-                                                    src={thumbUrl(f.secureUrl)}
-                                                    alt={f.originalFilename ?? ""}
-                                                    className="size-full object-cover"
-                                                />
-                                            </a>
-                                        ) : (
-                                            <a
-                                                key={f.id}
-                                                href={f.secureUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                title={f.originalFilename ?? undefined}
-                                                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border bg-muted p-2 text-center text-[10px] text-muted-foreground hover:bg-muted/70"
-                                            >
-                                                <span className="font-medium uppercase">
-                                                    {f.kind}
-                                                </span>
-                                                <span className="line-clamp-2 break-all">
-                                                    {f.originalFilename ?? "file"}
-                                                </span>
-                                            </a>
-                                        )
-                                    )}
-                                </div>
+                                <ProfileFiles files={profile.files} />
                             </div>
                         )}
                     </div>

@@ -194,23 +194,23 @@ export function MessageItem({
                         href={`?profile=${message.authorUserId}`}
                         className="rounded-sm hover:underline"
                     >
-                        <UserName name={name} colorHue={hue} className="text-sm" />
+                        <UserName name={name} colorHue={hue} className="channel-message-text" />
                     </Link>
                     {pending ? (
-                        <span className="text-xs text-muted-foreground">Sending…</span>
+                        <span className="channel-message-meta text-muted-foreground">Sending…</span>
                     ) : (
                         <Timestamp
                             date={message.createdAt}
-                            className="text-xs text-muted-foreground"
+                            className="channel-message-meta text-muted-foreground"
                         />
                     )}
                     {message.editedAt && !deleted && (
-                        <span className="text-xs text-muted-foreground">(edited)</span>
+                        <span className="channel-message-meta text-muted-foreground">(edited)</span>
                     )}
                 </div>
 
                 {deleted ? (
-                    <p className="text-sm text-muted-foreground italic">
+                    <p className="channel-message-text text-muted-foreground italic">
                         This message was deleted.
                     </p>
                 ) : editing ? (
