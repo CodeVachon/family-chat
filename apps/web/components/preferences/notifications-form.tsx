@@ -35,7 +35,11 @@ export function NotificationsForm({
     async function save() {
         setPending(true);
         try {
-            await updateNotifications({ notificationLevel: level });
+            const result = await updateNotifications({ notificationLevel: level });
+            if (!result.ok) {
+                toast.error(result.error);
+                return;
+            }
             toast.success("Notification settings updated");
             router.refresh();
         } catch (err) {
