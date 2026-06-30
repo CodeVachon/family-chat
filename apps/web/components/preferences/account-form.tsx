@@ -1,14 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { TextField } from "@/components/auth/text-field";
+import { setInitialPassword } from "@/lib/actions/account";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@workspace/ui/components/button";
 import { Label } from "@workspace/ui/components/label";
 
-export function AccountForm({ email }: { email: string }) {
+export function AccountForm({ email, hasPassword }: { email: string; hasPassword: boolean }) {
+    const router = useRouter();
     const [current, setCurrent] = useState("");
     const [next, setNext] = useState("");
     const [pending, setPending] = useState(false);
@@ -47,6 +50,24 @@ export function AccountForm({ email }: { email: string }) {
             return;
         }
         setPending(true);
+
+        // Magic-link users have no password yet, so there's nothing to verify —
+        // set an initial one. Existing-password users must confirm the current
+        // one via the standard change-password flow.
+        if (!hasPassword) {
+            const message = await setInitialPassword(next);
+            setPending(false);
+            if (message) {
+                toast.error(message);
+                return;
+            }
+            toast.success("Password set");
+            setNext("");
+            // Refresh so the form switches to the change-password variant.
+            router.refresh();
+            return;
+        }
+
         const { error } = await authClient.changePassword({
             currentPassword: current,
             newPassword: next
@@ -91,15 +112,17 @@ export function AccountForm({ email }: { email: string }) {
             </form>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <TextField
-                    id="current"
-                    label="Current password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={current}
-                    onChange={(e) => setCurrent(e.target.value)}
-                />
+                {hasPassword && (
+                    <TextField
+                        id="current"
+                        label="Current password"
+                        type="password"
+                        autoComplete="current-password"
+                        required
+                        value={current}
+                        onChange={(e) => setCurrent(e.target.value)}
+                    />
+                )}
                 <TextField
                     id="new"
                     label="New password"
@@ -112,7 +135,7 @@ export function AccountForm({ email }: { email: string }) {
                 />
                 <div>
                     <Button type="submit" disabled={pending}>
-                        {pending ? "Saving…" : "Change password"}
+                        {pending ? "Saving…" : hasPassword ? "Change password" : "Set password"}
                     </Button>
                 </div>
             </form>
