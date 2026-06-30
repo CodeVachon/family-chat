@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+    boolean,
+    index,
+    integer,
+    pgTable,
+    text,
+    timestamp,
+    uniqueIndex
+} from "drizzle-orm/pg-core";
 
 import { appRole, approvalStatus } from "./enums";
 
@@ -79,6 +87,34 @@ export const verification = pgTable("verification", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
+
+/**
+ * WebAuthn passkeys (Better-Auth `@better-auth/passkey` plugin). Property names
+ * must match the plugin's model field names — the Drizzle adapter maps by
+ * property key, not DB column. `counter` is the authenticator sign count.
+ */
+export const passkey = pgTable(
+    "passkey",
+    {
+        id: text("id").primaryKey(),
+        name: text("name"),
+        publicKey: text("public_key").notNull(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => user.id, { onDelete: "cascade" }),
+        credentialID: text("credential_id").notNull(),
+        counter: integer("counter").notNull(),
+        deviceType: text("device_type").notNull(),
+        backedUp: boolean("backed_up").notNull(),
+        transports: text("transports"),
+        createdAt: timestamp("created_at").defaultNow(),
+        aaguid: text("aaguid")
+    },
+    (table) => [
+        index("passkey_user_id_idx").on(table.userId),
+        index("passkey_credential_id_idx").on(table.credentialID)
+    ]
+);
 
 export type User = typeof user.$inferSelect;
 export type AppRole = User["appRole"];
