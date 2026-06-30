@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { TextField } from "@/components/auth/text-field";
+import { useResendVerification } from "@/components/auth/use-resend-verification";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@workspace/ui/components/button";
 
@@ -15,7 +16,7 @@ export function SignupForm() {
     const [password, setPassword] = useState("");
     const [pending, setPending] = useState(false);
     const [verifySent, setVerifySent] = useState(false);
-    const [resending, setResending] = useState(false);
+    const { resending, resend } = useResendVerification(email);
 
     async function handleSignup(e: React.FormEvent) {
         e.preventDefault();
@@ -59,17 +60,6 @@ export function SignupForm() {
         router.refresh();
     }
 
-    async function handleResend() {
-        setResending(true);
-        const { error } = await authClient.sendVerificationEmail({ email, callbackURL: "/" });
-        setResending(false);
-        if (error) {
-            toast.error(error.message ?? "Could not resend the email.");
-            return;
-        }
-        toast.success("Verification email sent.");
-    }
-
     if (verifySent) {
         return (
             <div data-component="SignupForm" className="flex flex-col gap-4 text-sm">
@@ -79,7 +69,7 @@ export function SignupForm() {
                     Click it to verify your address — then an administrator will review your account
                     for access.
                 </p>
-                <Button type="button" variant="outline" onClick={handleResend} disabled={resending}>
+                <Button type="button" variant="outline" onClick={resend} disabled={resending}>
                     {resending ? "Sending…" : "Resend verification email"}
                 </Button>
             </div>
