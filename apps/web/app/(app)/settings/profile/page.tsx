@@ -15,6 +15,8 @@ export default async function ProfileSettingsPage() {
                 avatarSourceUrl: prefs.avatarSourceUrl,
                 avatarCrop: prefs.avatarCrop,
                 bannerUrl: prefs.bannerUrl,
+                bannerSourceUrl: prefs.bannerSourceUrl,
+                bannerCrop: prefs.bannerCrop,
                 bio: prefs.bio ?? "",
                 phone: prefs.phone ?? "",
                 fallbackName: user.name

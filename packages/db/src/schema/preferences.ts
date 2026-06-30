@@ -37,7 +37,13 @@ export const userPreferences = pgTable("user_preferences", {
     // Public profile fields (shown in the profile side panel).
     bio: text("bio"),
     phone: text("phone"),
+    // Delivery URL actually rendered (transform baked in). For a manually
+    // cropped banner this carries the c_crop chain; otherwise the g_auto fill.
     bannerUrl: text("banner_url"),
+    // Raw (untransformed) Cloudinary URL + the manual 3:1 crop rectangle, kept
+    // so the banner editor can be reopened and re-adjusted non-destructively.
+    bannerSourceUrl: text("banner_source_url"),
+    bannerCrop: jsonb("banner_crop").$type<AvatarCrop>(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow()
 });

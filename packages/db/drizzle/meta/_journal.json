@@ -127,6 +127,13 @@
       "when": 1782772568361,
       "tag": "0017_purple_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1782782253383,
+      "tag": "0018_sloppy_talos",
+      "breakpoints": true
     }
   ]
 }

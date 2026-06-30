@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ChannelIcon } from "@/components/channels/channel-icon";
 import { ProfileFiles } from "@/components/profile/profile-files";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
-import { bannerUrl as bannerTransform } from "@/lib/cloudinary/url";
 import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { getUserProfile } from "@/lib/queries/profile";
 
@@ -53,7 +52,7 @@ export async function ProfilePanel({
                             {profile.bannerUrl && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                    src={bannerTransform(profile.bannerUrl)}
+                                    src={profile.bannerUrl}
                                     alt=""
                                     className="size-full object-cover"
                                 />
