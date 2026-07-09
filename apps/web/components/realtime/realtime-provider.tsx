@@ -84,12 +84,22 @@ export function RealtimeProvider({
                 description: body,
                 action: { label: "View", onClick: () => router.push(`/channels/${channelId}`) }
             });
+            // Show the OS notification via the service worker. The Notification
+            // constructor is an illegal constructor on mobile (e.g. Chrome on
+            // Android), so we go through ServiceWorkerRegistration.showNotification;
+            // the click-through is handled by the `notificationclick` listener in
+            // sw.js via `data.url`, matching background push notifications.
             if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-                const n = new Notification(title, { body });
-                n.onclick = () => {
-                    window.focus();
-                    router.push(`/channels/${channelId}`);
-                };
+                navigator.serviceWorker?.ready
+                    .then((reg) =>
+                        reg.showNotification(title, {
+                            body,
+                            icon: "/icon.svg",
+                            badge: "/icon.svg",
+                            data: { url: `/channels/${channelId}` }
+                        })
+                    )
+                    .catch(() => {});
             }
         },
         [router]
