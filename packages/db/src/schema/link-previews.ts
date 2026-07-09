@@ -16,8 +16,8 @@ export const linkPreviews = pgTable("link_previews", {
     // 'summary' | 'summary_large_image' | ...
     cardType: text("card_type"),
     faviconUrl: text("favicon_url"),
-    fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
-    expiresAt: timestamp("expires_at")
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
 });
 
 export type LinkPreview = typeof linkPreviews.$inferSelect;

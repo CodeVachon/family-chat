@@ -14,12 +14,12 @@ export const channels = pgTable("channels", {
     icon: text("icon"),
     isPrivate: boolean("is_private").notNull().default(false),
     isArchived: boolean("is_archived").notNull().default(false),
-    archivedAt: timestamp("archived_at"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id")
         .notNull()
         .references(() => user.id),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow()
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 export const channelMembers = pgTable(
@@ -36,10 +36,10 @@ export const channelMembers = pgTable(
         // Read pointer for unread counts. No FK (messages is defined later and
         // we don't want a message delete to disturb the pointer).
         lastReadMessageId: uuid("last_read_message_id"),
-        lastReadAt: timestamp("last_read_at"),
-        joinedAt: timestamp("joined_at").notNull().defaultNow(),
-        createdAt: timestamp("created_at").notNull().defaultNow(),
-        updatedAt: timestamp("updated_at").notNull().defaultNow()
+        lastReadAt: timestamp("last_read_at", { withTimezone: true }),
+        joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [
         // One membership per user per channel.

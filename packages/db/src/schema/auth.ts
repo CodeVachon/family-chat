@@ -31,11 +31,11 @@ export const user = pgTable(
         // --- custom application fields ---
         appRole: appRole("app_role").notNull().default("user"),
         approvalStatus: approvalStatus("approval_status").notNull().default("pending"),
-        approvedAt: timestamp("approved_at"),
+        approvedAt: timestamp("approved_at", { withTimezone: true }),
         approvedByUserId: text("approved_by_user_id"),
 
-        createdAt: timestamp("created_at").notNull().defaultNow(),
-        updatedAt: timestamp("updated_at").notNull().defaultNow()
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [
         // Enforce a single application Owner at the DB layer: among rows where
@@ -48,15 +48,15 @@ export const user = pgTable(
 
 export const session = pgTable("session", {
     id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     token: text("token").notNull().unique(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow()
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 export const account = pgTable("account", {
@@ -69,13 +69,13 @@ export const account = pgTable("account", {
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
     scope: text("scope"),
     // Hashed password for email/password sign-in lives here (Better-Auth).
     password: text("password"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow()
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 /** Email-verification AND magic-link tokens. */
@@ -83,9 +83,9 @@ export const verification = pgTable("verification", {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow()
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 /**
@@ -107,7 +107,7 @@ export const passkey = pgTable(
         deviceType: text("device_type").notNull(),
         backedUp: boolean("backed_up").notNull(),
         transports: text("transports"),
-        createdAt: timestamp("created_at").defaultNow(),
+        createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
         aaguid: text("aaguid")
     },
     (table) => [

@@ -44,8 +44,8 @@ export const userPreferences = pgTable("user_preferences", {
     // so the banner editor can be reopened and re-adjusted non-destructively.
     bannerSourceUrl: text("banner_source_url"),
     bannerCrop: jsonb("banner_crop").$type<AvatarCrop>(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow()
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 export type UserPreferences = typeof userPreferences.$inferSelect;

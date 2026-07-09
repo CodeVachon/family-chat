@@ -13,7 +13,7 @@ export const mentions = pgTable(
         mentionedUserId: text("mentioned_user_id")
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
-        createdAt: timestamp("created_at").notNull().defaultNow()
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [uniqueIndex("mentions_unique").on(table.messageId, table.mentionedUserId)]
 );

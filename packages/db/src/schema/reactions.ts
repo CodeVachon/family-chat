@@ -14,7 +14,7 @@ export const messageReactions = pgTable(
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
         emoji: text("emoji").notNull(),
-        createdAt: timestamp("created_at").notNull().defaultNow()
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [
         uniqueIndex("message_reactions_unique").on(table.messageId, table.userId, table.emoji)

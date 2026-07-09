@@ -16,7 +16,7 @@ export const pushSubscriptions = pgTable(
         endpoint: text("endpoint").notNull().unique(),
         p256dh: text("p256dh").notNull(),
         auth: text("auth").notNull(),
-        createdAt: timestamp("created_at").notNull().defaultNow()
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [index("push_subscriptions_user_idx").on(table.userId)]
 );
