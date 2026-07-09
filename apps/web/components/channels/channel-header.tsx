@@ -52,7 +52,9 @@ export function ChannelHeader({
                     )}
                 </div>
                 {channel.description && (
-                    <p className="truncate text-xs text-muted-foreground">{channel.description}</p>
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                        {channel.description}
+                    </p>
                 )}
             </div>
 
@@ -65,7 +67,7 @@ export function ChannelHeader({
                     <button
                         type="button"
                         aria-label={`${members.length} ${members.length === 1 ? "member" : "members"}`}
-                        className="flex items-center rounded-lg p-0.5 hover:bg-muted"
+                        className="flex shrink-0 items-center rounded-lg p-0.5 hover:bg-muted"
                     >
                         <MembersAvatarGroup members={members} />
                     </button>
