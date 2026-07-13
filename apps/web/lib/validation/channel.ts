@@ -48,7 +48,7 @@ export const channelFormSchema = z.object({
 });
 
 export const attachmentInputSchema = z.object({
-    kind: z.enum(["image", "pdf", "file"]),
+    kind: z.enum(["image", "pdf", "file", "video"]),
     publicId: z.string().min(1),
     resourceType: z.string().min(1),
     secureUrl: z.string().url(),

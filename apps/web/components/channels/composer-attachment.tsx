@@ -8,6 +8,7 @@ export type PendingAttachment = {
     id: string;
     name: string;
     previewUrl?: string;
+    isVideo?: boolean;
     status: "uploading" | "done" | "error";
     progress: number;
     data?: AttachmentInput;
@@ -20,14 +21,22 @@ export function ComposerAttachment({
     item: PendingAttachment;
     onRemove: (id: string) => void;
 }) {
-    const isImage = Boolean(item.previewUrl);
+    const hasPreview = Boolean(item.previewUrl);
 
     return (
         <div
             data-component="ComposerAttachment"
             className="relative size-16 shrink-0 overflow-hidden rounded-lg border bg-muted"
         >
-            {isImage ? (
+            {hasPreview && item.isVideo ? (
+                <video
+                    src={item.previewUrl}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="size-full object-cover"
+                />
+            ) : hasPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.previewUrl} alt={item.name} className="size-full object-cover" />
             ) : (

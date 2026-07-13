@@ -26,8 +26,15 @@ function humanizeUploadError(raw: string): string {
  * `raw` so any file type uploads cleanly and isn't subject to PDF-as-image
  * delivery restrictions.
  */
-function classify(file: File): { kind: AttachmentInput["kind"]; resourceType: "image" | "raw" } {
+function classify(file: File): {
+    kind: AttachmentInput["kind"];
+    resourceType: "image" | "raw" | "video";
+} {
     if (file.type.startsWith("image/")) return { kind: "image", resourceType: "image" };
+    // Videos must hit Cloudinary's video pipeline; the `raw` endpoint rejects
+    // them (raw file-size cap) and never transcodes/streams. iOS records .mov
+    // (video/quicktime) — matching on the MIME prefix covers every container.
+    if (file.type.startsWith("video/")) return { kind: "video", resourceType: "video" };
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     // PDFs go through the image pipeline so Cloudinary can render page previews
     // (requires "Allow delivery of PDF and ZIP files" enabled on the account).

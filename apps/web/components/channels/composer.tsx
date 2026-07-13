@@ -66,10 +66,13 @@ export function Composer({
 
     function startUpload(file: File) {
         const id = randomId();
-        const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+        // Preview locally for images and videos; other file types show an icon.
+        const previewUrl = isImage || isVideo ? URL.createObjectURL(file) : undefined;
         setItems((prev) => [
             ...prev,
-            { id, name: file.name, previewUrl, status: "uploading", progress: 0 }
+            { id, name: file.name, previewUrl, isVideo, status: "uploading", progress: 0 }
         ]);
         uploadToCloudinary(file, (pct) => update(id, { progress: pct }))
             .then((data) => update(id, { status: "done", progress: 100, data }))
