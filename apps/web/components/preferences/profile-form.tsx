@@ -95,7 +95,7 @@ export function ProfileForm({
     async function save() {
         setPending(true);
         try {
-            await updateProfile({
+            const result = await updateProfile({
                 displayName: displayName.trim() || null,
                 colorHue,
                 avatarUrl: avatar.url,
@@ -104,6 +104,10 @@ export function ProfileForm({
                 bio: bio.trim() || null,
                 phone: phone.trim() || null
             });
+            if (!result.ok) {
+                toast.error(result.error);
+                return;
+            }
             toast.success("Profile updated");
             router.refresh();
         } catch (err) {

@@ -95,12 +95,16 @@ export function AppearanceForm({
     async function save() {
         setPending(true);
         try {
-            await updateAppearance({
+            const result = await updateAppearance({
                 themePreference: theme,
                 dateTimeFormat: format,
                 fontSizeScale: fontSize,
                 fontFamily
             });
+            if (!result.ok) {
+                toast.error(result.error);
+                return;
+            }
             toast.success("Appearance updated");
             router.refresh();
         } catch (err) {

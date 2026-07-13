@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@workspace/db/client";
 import { userPreferences } from "@workspace/db/schema";
 
+import { type ActionResult, parseInput } from "@/lib/actions/result";
 import { requireApprovedUser } from "@/lib/dal";
 import { getBroker } from "@/lib/realtime/broker";
 import {
@@ -29,14 +30,28 @@ async function upsertPreferences(userId: string, values: Record<string, unknown>
         });
 }
 
-export async function updateProfile(input: unknown) {
-    const data = profilePrefsSchema.parse(input);
+/**
+ * Shared tail for the preference actions: validate, require the user, write only
+ * the provided keys, and revalidate the (server-rendered) shell. A validation
+ * failure short-circuits and is handed straight back to the caller so it can
+ * show the message — never thrown (see `parseInput`). `syncUsers` is set for
+ * identity-visible changes (name/color/avatar/banner), which must be pushed to
+ * every client; appearance/notifications are personal-only.
+ */
+async function commitPreferences(
+    parsed: ActionResult<Record<string, unknown>>,
+    { syncUsers }: { syncUsers: boolean }
+): Promise<ActionResult> {
+    if (!parsed.ok) return parsed;
     const user = await requireApprovedUser();
-    await upsertPreferences(user.id, data);
-    // Name/color/avatar appear in the shell and on the user's own messages.
+    await upsertPreferences(user.id, parsed.data);
     revalidatePath("/", "layout");
-    // Identity changes affect how this user looks to everyone — sync all clients.
-    getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
+    if (syncUsers) getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
+    return { ok: true, data: undefined };
+}
+
+export async function updateProfile(input: unknown): Promise<ActionResult> {
+    return commitPreferences(parseInput(profilePrefsSchema, input), { syncUsers: true });
 }
 
 /**
@@ -45,12 +60,8 @@ export async function updateProfile(input: unknown) {
  * this, independently of the profile form's "Save changes" — and since only
  * these three keys are written, the other profile fields are never touched.
  */
-export async function updateAvatar(input: unknown) {
-    const data = avatarPrefsSchema.parse(input);
-    const user = await requireApprovedUser();
-    await upsertPreferences(user.id, data);
-    revalidatePath("/", "layout");
-    getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
+export async function updateAvatar(input: unknown): Promise<ActionResult> {
+    return commitPreferences(parseInput(avatarPrefsSchema, input), { syncUsers: true });
 }
 
 /**
@@ -59,24 +70,14 @@ export async function updateAvatar(input: unknown) {
  * "Remove" commit immediately via this, independently of the profile form's
  * "Save changes", and only these three keys are written.
  */
-export async function updateBanner(input: unknown) {
-    const data = bannerPrefsSchema.parse(input);
-    const user = await requireApprovedUser();
-    await upsertPreferences(user.id, data);
-    revalidatePath("/", "layout");
-    getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
+export async function updateBanner(input: unknown): Promise<ActionResult> {
+    return commitPreferences(parseInput(bannerPrefsSchema, input), { syncUsers: true });
 }
 
-export async function updateAppearance(input: unknown) {
-    const data = appearancePrefsSchema.parse(input);
-    const user = await requireApprovedUser();
-    await upsertPreferences(user.id, data);
-    revalidatePath("/", "layout");
+export async function updateAppearance(input: unknown): Promise<ActionResult> {
+    return commitPreferences(parseInput(appearancePrefsSchema, input), { syncUsers: false });
 }
 
-export async function updateNotifications(input: unknown) {
-    const data = notificationPrefsSchema.parse(input);
-    const user = await requireApprovedUser();
-    await upsertPreferences(user.id, data);
-    revalidatePath("/", "layout");
+export async function updateNotifications(input: unknown): Promise<ActionResult> {
+    return commitPreferences(parseInput(notificationPrefsSchema, input), { syncUsers: false });
 }

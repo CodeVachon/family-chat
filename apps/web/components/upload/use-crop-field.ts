@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { type ActionResult } from "@/lib/actions/result";
 import { type AvatarCrop, originalUrl } from "@/lib/cloudinary/url";
 import { uploadToCloudinary } from "@/lib/cloudinary/upload-client";
 
@@ -21,7 +22,7 @@ export function useCropField(opts: {
     initialSourceUrl: string | null;
     initialCrop: AvatarCrop | null;
     transform: (src: string, crop: AvatarCrop) => string;
-    persist: (payload: CropPayload) => Promise<void>;
+    persist: (payload: CropPayload) => Promise<ActionResult>;
     label: string;
 }) {
     const { transform, persist, label } = opts;
@@ -77,7 +78,11 @@ export function useCropField(opts: {
             }
             if (!src) return;
             const nextUrl = transform(src, pixels);
-            await persist({ url: nextUrl, sourceUrl: src, crop: pixels });
+            const result = await persist({ url: nextUrl, sourceUrl: src, crop: pixels });
+            if (!result.ok) {
+                toast.error(result.error);
+                return;
+            }
             setSourceUrl(src);
             setCrop(pixels);
             setUrl(nextUrl);
@@ -95,7 +100,11 @@ export function useCropField(opts: {
 
     async function remove() {
         try {
-            await persist({ url: null, sourceUrl: null, crop: null });
+            const result = await persist({ url: null, sourceUrl: null, crop: null });
+            if (!result.ok) {
+                toast.error(result.error);
+                return;
+            }
             setUrl(null);
             setSourceUrl(null);
             setCrop(null);
