@@ -27,6 +27,11 @@ export function EmojiPicker({
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
                 <Frimousse.Root
+                    // Self-hosted Emojibase data (public/emojibase-data/en). frimousse
+                    // defaults to fetching from cdn.jsdelivr.net, which the strict
+                    // connect-src CSP (see proxy.ts) blocks; serving it from 'self'
+                    // keeps the picker working without loosening the policy.
+                    emojibaseUrl="/emojibase-data"
                     className="isolate flex h-[320px] w-[300px] flex-col bg-popover"
                     onEmojiSelect={({ emoji }) => {
                         onSelect(emoji);
