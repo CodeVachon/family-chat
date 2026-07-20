@@ -9,7 +9,7 @@ function escapeRegex(value: string): string {
 
 /** Legacy plain-text bodies: render with `@Name` tokens highlighted. */
 function PlainTextBody({ body, mentions }: { body: string; mentions: MentionSummary[] }) {
-    const base = "channel-message-text break-words whitespace-pre-wrap";
+    const base = "channel-message-text [overflow-wrap:anywhere] whitespace-pre-wrap";
     if (mentions.length === 0) {
         return (
             <p data-component="PlainTextBody" className={base}>
@@ -63,7 +63,7 @@ export function MessageBody({ body, mentions }: { body: string; mentions: Mentio
     return (
         <div
             data-component="MessageBody"
-            className="tiptap-content channel-message-text break-words"
+            className="tiptap-content channel-message-text [overflow-wrap:anywhere]"
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );
