@@ -27,7 +27,7 @@ export const attachments = pgTable(
         height: integer("height"),
         originalFilename: text("original_filename"),
         thumbnailUrl: text("thumbnail_url"),
-        createdAt: timestamp("created_at").notNull().defaultNow()
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [index("attachments_message_idx").on(table.messageId)]
 );

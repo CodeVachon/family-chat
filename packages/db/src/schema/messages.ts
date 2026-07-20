@@ -56,11 +56,11 @@ export const messages = pgTable(
             onDelete: "cascade"
         }),
         body: text("body").notNull(),
-        editedAt: timestamp("edited_at"),
+        editedAt: timestamp("edited_at", { withTimezone: true }),
         // Soft delete: deletedAt set renders a tombstone, body preserved for audit.
-        deletedAt: timestamp("deleted_at"),
-        createdAt: timestamp("created_at").notNull().defaultNow(),
-        updatedAt: timestamp("updated_at").notNull().defaultNow()
+        deletedAt: timestamp("deleted_at", { withTimezone: true }),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [
         index("messages_channel_created_idx").on(table.channelId, table.createdAt),

@@ -14,7 +14,7 @@ export const appSettings = pgTable("app_settings", {
         .array()
         .notNull()
         .default(sql`'{}'::uuid[]`),
-    updatedAt: timestamp("updated_at").notNull().defaultNow()
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
 export type AppSettings = typeof appSettings.$inferSelect;
