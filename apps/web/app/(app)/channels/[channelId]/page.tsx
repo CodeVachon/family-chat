@@ -108,7 +108,7 @@ export default async function ChannelPage({
         <div data-component="ChannelPage" className="channel-text-scale flex h-full min-h-0">
             <div
                 className={cn(
-                    "flex min-h-0 flex-1 flex-col",
+                    "flex min-h-0 min-w-0 flex-1 flex-col",
                     (threadId || profileId) && "hidden lg:flex"
                 )}
             >
