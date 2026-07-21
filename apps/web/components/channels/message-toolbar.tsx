@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteMessage } from "@/lib/actions/messages";
-import { toggleReaction } from "@/lib/actions/reactions";
 import { REACTION_EMOJIS } from "@/lib/validation/channel";
 import {
     DropdownMenu,
@@ -32,6 +31,7 @@ export function MessageToolbar({
     viewer,
     showReply,
     showTouchMenu,
+    onReact,
     onStartEdit
 }: {
     messageId: string;
@@ -41,6 +41,9 @@ export function MessageToolbar({
     /** Show the tap-accessible kebab menu on touch devices (thread view only;
      *  in the channel list, tapping a message opens its thread instead). */
     showTouchMenu: boolean;
+    /** Toggle a reaction; the parent owns the optimistic state so the picker's
+     *  result shows instantly (see MessageItem). */
+    onReact: (emoji: string) => void;
     onStartEdit: () => void;
 }) {
     const router = useRouter();
@@ -53,15 +56,10 @@ export function MessageToolbar({
     const canEdit = isAuthor && viewer.canPost;
     const canDelete = isAuthor || viewer.canManageMessages;
 
-    async function react(emoji: string) {
+    function react(emoji: string) {
         setPickerOpen(false);
         setMenuOpen(false);
-        try {
-            await toggleReaction(messageId, emoji);
-            router.refresh();
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Couldn't react");
-        }
+        onReact(emoji);
     }
 
     async function remove() {
