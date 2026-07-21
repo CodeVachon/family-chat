@@ -118,19 +118,31 @@ export async function listVisibleChannels(userId: string) {
           AND (${channelMembers.lastReadAt} IS NULL OR m.created_at > ${channelMembers.lastReadAt})
     ) END`;
 
+    // Favorited channels pin to the top. Non-members (public channels the user
+    // hasn't joined) have no membership row, so coalesce their NULL to false —
+    // otherwise DESC would sort NULLs first and float them above real favorites.
+    const isFavorite = sql<boolean>`COALESCE(${channelMembers.isFavorite}, false)`;
+
     const rows = await db
-        .select({ channel: channels, myRole: channelMembers.role, unreadCount, mentionCount })
+        .select({
+            channel: channels,
+            myRole: channelMembers.role,
+            isFavorite,
+            unreadCount,
+            mentionCount
+        })
         .from(channels)
         .leftJoin(
             channelMembers,
             and(eq(channelMembers.channelId, channels.id), eq(channelMembers.userId, userId))
         )
         .where(or(eq(channels.isPrivate, false), isNotNull(channelMembers.userId)))
-        .orderBy(asc(channels.name));
+        .orderBy(desc(isFavorite), asc(channels.name));
 
     return rows.map((r) => ({
         ...r.channel,
         myRole: (r.myRole as ChannelRole | null) ?? null,
+        isFavorite: Boolean(r.isFavorite),
         unreadCount: Number(r.unreadCount ?? 0),
         mentionCount: Number(r.mentionCount ?? 0)
     }));

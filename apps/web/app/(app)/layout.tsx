@@ -28,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         icon: c.icon,
         isPrivate: c.isPrivate,
         isArchived: c.isArchived,
+        isFavorite: c.isFavorite,
         myRole: c.myRole,
         unreadCount: c.unreadCount,
         mentionCount: c.mentionCount

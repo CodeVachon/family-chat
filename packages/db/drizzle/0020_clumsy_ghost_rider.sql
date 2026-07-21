@@ -1,0 +1,1 @@
+ALTER TABLE "channel_members" ADD COLUMN "is_favorite" boolean DEFAULT false NOT NULL;

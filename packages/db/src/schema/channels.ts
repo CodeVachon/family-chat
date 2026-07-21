@@ -33,6 +33,10 @@ export const channelMembers = pgTable(
             .notNull()
             .references(() => user.id, { onDelete: "cascade" }),
         role: channelRole("role").notNull().default("user"),
+        // Per-user "favorite" flag: favorited channels pin to the top of this
+        // user's sidebar. Only members have a row here, so only members can
+        // favorite a channel.
+        isFavorite: boolean("is_favorite").notNull().default(false),
         // Read pointer for unread counts. No FK (messages is defined later and
         // we don't want a message delete to disturb the pointer).
         lastReadMessageId: uuid("last_read_message_id"),

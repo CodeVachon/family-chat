@@ -141,6 +141,13 @@
       "when": 1783634520198,
       "tag": "0019_peaceful_roxanne_simpson",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784606009639,
+      "tag": "0020_clumsy_ghost_rider",
+      "breakpoints": true
     }
   ]
 }
