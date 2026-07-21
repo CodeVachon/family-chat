@@ -132,7 +132,7 @@ export function AppShell({
                 {/* Mobile sidebar drawer (mounted once; opened via SidebarToggle) */}
                 <MobileDrawer {...props} />
 
-                <div className="flex h-svh min-h-0 flex-col">
+                <div className="flex h-svh min-h-0 min-w-0 flex-col">
                     {/* Mobile top bar — only on routes without their own header */}
                     {!isChannelView && (
                         <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-card px-3 md:hidden">
