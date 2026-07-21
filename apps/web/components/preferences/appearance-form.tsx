@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useUserPrefs } from "@/components/preferences/user-prefs";
+import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { updateAppearance } from "@/lib/actions/preferences";
+import { formatTimestamp } from "@/lib/format";
 import {
     DATE_TIME_FORMATS,
     FONT_FAMILIES,
@@ -54,6 +57,44 @@ function applyFontSize(value: FontSizeScale) {
 }
 function applyFontFamily(value: FontFamily) {
     document.documentElement.dataset.fontFamily = value;
+}
+
+// A mock message that mirrors how a real message renders (see MessageItem), so
+// the user sees color, time format, font size, and font family applied together.
+// `format` is the form's live selection rather than the saved pref, so the
+// timestamp updates as the user tries options.
+function MessagePreview({ format }: { format: DateTimeFormat }) {
+    const { colorHue, displayName, avatarUrl, nowTick } = useUserPrefs();
+    const name = displayName ?? "You";
+    // Anchor to the live clock so the timestamp always reads ~15 minutes ago.
+    const now = new Date(nowTick);
+    const messageDate = new Date(nowTick - 15 * 60 * 1000);
+
+    return (
+        <div
+            data-component="MessagePreview"
+            className="flex gap-3 rounded-lg border bg-muted/30 p-3"
+        >
+            <UserAvatar
+                name={name}
+                colorHue={colorHue}
+                avatarUrl={avatarUrl}
+                className="size-9 shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                    <UserName name={name} colorHue={colorHue} className="channel-message-text" />
+                    <span
+                        suppressHydrationWarning
+                        className="channel-message-meta text-muted-foreground"
+                    >
+                        {formatTimestamp(messageDate, format, now)}
+                    </span>
+                </div>
+                <p className="channel-message-text">The quick brown fox jumps over the lazy dog.</p>
+            </div>
+        </div>
+    );
 }
 
 export function AppearanceForm({
@@ -169,9 +210,9 @@ export function AppearanceForm({
                         </label>
                     ))}
                 </RadioGroup>
-                <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="flex flex-col gap-2">
                     <p className="text-sm text-muted-foreground">Preview</p>
-                    <p className="font-sans">The quick brown fox jumps over the lazy dog.</p>
+                    <MessagePreview format={format} />
                 </div>
             </div>
 
