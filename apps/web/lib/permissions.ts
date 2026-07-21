@@ -29,7 +29,6 @@ export type ChannelAction =
     | "channel:delete"
     | "thread:create"
     | "message:edit_own"
-    | "message:edit_any"
     | "message:delete_any";
 
 const isStaffRole = (role: AppRole): boolean => role === "owner" || role === "admin";
@@ -75,7 +74,6 @@ const CHANNEL_ACTION_RULES: Record<
     "channel:edit_settings": { roles: MANAGEMENT_ROLES },
     "channel:archive": { roles: MANAGEMENT_ROLES },
     "channel:manage_members": { roles: MANAGEMENT_ROLES },
-    "message:edit_any": { roles: MANAGEMENT_ROLES },
     "message:delete_any": { roles: MANAGEMENT_ROLES }
 };
 
