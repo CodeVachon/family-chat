@@ -3,7 +3,7 @@
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import type { ComposerMember } from "@/components/channels/composer";
@@ -17,9 +17,10 @@ import { YouTubeEmbed } from "@/components/channels/youtube-embed";
 import { Timestamp } from "@/components/preferences/user-prefs";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
 import { editMessage } from "@/lib/actions/messages";
+import { toggleReaction } from "@/lib/actions/reactions";
 import { youtubeId } from "@/lib/messaging/links";
 import { htmlToText, isHtmlBody, plainTextToHtml } from "@/lib/messaging/rich-text";
-import type { ChannelMessage, ThreadMessage } from "@/lib/queries/channels";
+import type { ChannelMessage, ReactionSummary, ThreadMessage } from "@/lib/queries/channels";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 
@@ -85,20 +86,43 @@ function InlineEditor({
     );
 }
 
+/** Apply a reaction toggle to the aggregated summaries, mirroring the server's
+ * per-user toggle semantics in `toggleReaction`. Used to drive the optimistic
+ * update so the reactor sees the change instantly instead of waiting on the
+ * server round-trip + full refetch. */
+function toggleReactionSummary(reactions: ReactionSummary[], emoji: string): ReactionSummary[] {
+    const existing = reactions.find((r) => r.emoji === emoji);
+    if (!existing) return [...reactions, { emoji, count: 1, reactedByMe: true }];
+    if (existing.reactedByMe) {
+        // Removing my reaction; drop the emoji entirely once no one is left.
+        if (existing.count <= 1) return reactions.filter((r) => r.emoji !== emoji);
+        return reactions.map((r) =>
+            r.emoji === emoji ? { ...r, count: r.count - 1, reactedByMe: false } : r
+        );
+    }
+    return reactions.map((r) =>
+        r.emoji === emoji ? { ...r, count: r.count + 1, reactedByMe: true } : r
+    );
+}
+
 /** The body of a live (non-deleted, non-editing) message: text, attachments,
  * link previews, reactions, and the reply affordance. */
 function MessageContent({
     message,
+    reactions,
     canReact,
     showReply,
     replyCount,
-    pending
+    pending,
+    onReact
 }: {
     message: ItemMessage;
+    reactions: ReactionSummary[];
     canReact: boolean;
     showReply: boolean;
     replyCount: number;
     pending: boolean;
+    onReact: (emoji: string) => void;
 }) {
     return (
         <div data-component="MessageContent">
@@ -117,11 +141,7 @@ function MessageContent({
                 </div>
             )}
             {!pending && (
-                <ReactionBar
-                    messageId={message.id}
-                    reactions={message.reactions}
-                    canReact={canReact}
-                />
+                <ReactionBar reactions={reactions} canReact={canReact} onReact={onReact} />
             )}
             {showReply && replyCount > 0 && (
                 <Link
@@ -152,6 +172,28 @@ export function MessageItem({
 }) {
     const router = useRouter();
     const [editing, setEditing] = useState(false);
+    const [, startReaction] = useTransition();
+    // Optimistic reactions so a toggle shows instantly; the base resets to the
+    // server truth once the transition's router.refresh() re-renders with fresh
+    // props, which also reconciles it with real-time updates from other users.
+    const [optimisticReactions, addOptimisticReaction] = useOptimistic(
+        message.reactions,
+        toggleReactionSummary
+    );
+
+    function react(emoji: string) {
+        if (!viewer.canPost) return;
+        startReaction(async () => {
+            addOptimisticReaction(emoji);
+            try {
+                await toggleReaction(message.id, emoji);
+                router.refresh();
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Couldn't update reaction");
+            }
+        });
+    }
+
     const prefs = message.author.preferences;
     const name = prefs?.displayName ?? message.author.name;
     const hue = prefs?.colorHue ?? 220;
@@ -222,10 +264,12 @@ export function MessageItem({
                 ) : (
                     <MessageContent
                         message={message}
+                        reactions={optimisticReactions}
                         canReact={viewer.canPost}
                         showReply={showReply}
                         replyCount={replyCount}
                         pending={pending}
+                        onReact={react}
                     />
                 )}
             </div>
@@ -237,6 +281,7 @@ export function MessageItem({
                     viewer={viewer}
                     showReply={showReply}
                     showTouchMenu={inThread}
+                    onReact={react}
                     onStartEdit={() => setEditing(true)}
                 />
             )}
