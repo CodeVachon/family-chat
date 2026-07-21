@@ -129,10 +129,11 @@ export async function editMessage(input: unknown) {
     if (message.type === "system") throw new Error("System messages cannot be edited");
 
     const { user, channel, membership } = await authorizeChannel(message.channelId, "channel:view");
+    // Editing is author-only: no role (including app/channel admins) may rewrite
+    // another user's message. Deletion is separate — admins can delete via
+    // `message:delete_any` — but altering authored content is never delegated.
     const isAuthor = message.authorUserId === user.id;
-    const canEdit =
-        (isAuthor && canInChannel(user, membership, channel, "message:edit_own")) ||
-        canInChannel(user, membership, channel, "message:edit_any");
+    const canEdit = isAuthor && canInChannel(user, membership, channel, "message:edit_own");
     if (!canEdit) throw new Error("Not authorized");
 
     const body = sanitizeMessageHtml(data.body.trim());

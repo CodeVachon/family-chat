@@ -49,7 +49,8 @@ export function MessageToolbar({
     const [confirmOpen, setConfirmOpen] = useState(false);
 
     const isAuthor = authorUserId === viewer.userId;
-    const canEdit = (isAuthor && viewer.canPost) || viewer.canManageMessages;
+    // Editing is author-only; admins can still delete via canManageMessages.
+    const canEdit = isAuthor && viewer.canPost;
     const canDelete = isAuthor || viewer.canManageMessages;
 
     async function react(emoji: string) {
