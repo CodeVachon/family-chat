@@ -5,10 +5,7 @@
     },
     "next-devtools": {
       "command": "npx",
-      "args": [
-        "-y",
-        "next-devtools-mcp@latest"
-      ]
+      "args": ["-y", "next-devtools-mcp@latest"]
     },
     "Sentry": {
       "url": "https://mcp.sentry.dev/mcp/code-christopher-vachon/family-chat"
@@ -18,9 +15,7 @@
     "sentry-cli@claude-plugins-official": true
   },
   "permissions": {
-    "allow": [
-      "mcp__codegraph__*"
-    ]
+    "allow": ["mcp__codegraph__*"]
   },
   "hooks": {
     "UserPromptSubmit": [
