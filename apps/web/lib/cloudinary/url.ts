@@ -53,6 +53,26 @@ export function pdfPageUrl(secureUrl: string, page: number): string {
     return withTransform(secureUrl, `pg_${page},w_1000,q_auto,f_jpg`);
 }
 
+/**
+ * Whether a URL is a Cloudinary delivery URL we can rewrite. Callers that *depend*
+ * on a transform being applied (rather than treating it as an optimization) need
+ * this — {@link withTransform} passes a foreign URL through untouched.
+ */
+export function isTransformable(secureUrl: string): boolean {
+    return secureUrl.includes("/upload/");
+}
+
+/**
+ * Square PNG rendition at an exact pixel size, for OS surfaces that reject SVG
+ * and pick their own size — the PWA manifest icons and the iOS launch images.
+ * Pads rather than crops so an off-square upload keeps all of its content.
+ * `size` is rounded: a fractional `w_`/`h_` is not a valid transform.
+ */
+export function squarePngUrl(secureUrl: string, size: number): string {
+    const px = Math.round(size);
+    return withTransform(secureUrl, `c_pad,b_auto,w_${px},h_${px},f_png`);
+}
+
 /** A crop rectangle in natural-image pixels (mirrors db `AvatarCrop`). */
 export type AvatarCrop = { x: number; y: number; width: number; height: number };
 
