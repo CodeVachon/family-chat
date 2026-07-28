@@ -117,7 +117,11 @@ function ArchiveButton({
 }
 
 type ChannelDialogProps = {
-    trigger: React.ReactNode;
+    /** Omit when driving the dialog with `open`/`onOpenChange`. */
+    trigger?: React.ReactNode;
+    /** Controlled open state. When provided, the dialog keeps none of its own. */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
     channel?: {
         id: string;
         name: string;
@@ -129,12 +133,30 @@ type ChannelDialogProps = {
     };
 };
 
-export function ChannelDialog({ trigger, channel }: ChannelDialogProps) {
-    const [open, setOpen] = useState(false);
+/**
+ * Create/edit-channel dialog. Works either as a self-contained trigger+dialog, or
+ * controlled from outside — the latter lets the URL open it (see
+ * `ChannelSettingsFromUrl`), which a trigger nested in a dropdown menu can't do,
+ * because the menu unmounts on select and takes the trigger with it.
+ */
+export function ChannelDialog({
+    trigger,
+    open: controlledOpen,
+    onOpenChange,
+    channel
+}: ChannelDialogProps) {
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : uncontrolledOpen;
+
+    const setOpen = (next: boolean) => {
+        if (!isControlled) setUncontrolledOpen(next);
+        onOpenChange?.(next);
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={trigger as React.ReactElement} />
+            {trigger && <DialogTrigger render={trigger as React.ReactElement} />}
             <DialogContent className="sm:max-w-md">
                 {/* Mount the form only while open so its state resets each time. */}
                 {open && <ChannelForm channel={channel} onSaved={() => setOpen(false)} />}

@@ -1,4 +1,3 @@
-import { ChannelHeader } from "@/components/channels/channel-header";
 import { Composer } from "@/components/channels/composer";
 import { JoinButton } from "@/components/channels/join-button";
 import { MarkReadOnView } from "@/components/channels/mark-read-on-view";
@@ -11,8 +10,12 @@ import { TypingIndicator } from "@/components/channels/typing-indicator";
 import { ProfilePanel } from "@/components/profile/profile-panel";
 import { authorizeChannel } from "@/lib/dal";
 import { canInChannel } from "@/lib/permissions";
-import { CHANNEL_PAGE_SIZE, listChannelMembers, listChannelMessages } from "@/lib/queries/channels";
-import { listApprovedUsers } from "@/lib/queries/users";
+import {
+    CHANNEL_PAGE_SIZE,
+    listChannelMembers,
+    listChannelMessages,
+    toChannelMembers
+} from "@/lib/queries/channels";
 import { cn } from "@workspace/ui/lib/utils";
 
 import type { ComposerAuthor } from "@/components/channels/composer";
@@ -47,8 +50,6 @@ export default async function ChannelPage({
     const { user, channel, membership } = await authorizeChannel(channelId, "channel:view");
 
     const canPost = canInChannel(user, membership, channel, "channel:post");
-    const canManage = canInChannel(user, membership, channel, "channel:edit_settings");
-    const canManageMembers = canInChannel(user, membership, channel, "channel:manage_members");
     const canJoin = !membership && !channel.isPrivate && !channel.isArchived;
 
     const viewer: MessageViewer = {
@@ -57,19 +58,13 @@ export default async function ChannelPage({
         canManageMessages: canInChannel(user, membership, channel, "message:delete_any")
     };
 
-    const [messages, memberRows, approvedUsers] = await Promise.all([
+    // listChannelMembers is request-memoized, so this shares the layout's read.
+    const [messages, memberRows] = await Promise.all([
         listChannelMessages(channelId, user.id),
-        listChannelMembers(channelId),
-        canManageMembers ? listApprovedUsers() : Promise.resolve([])
+        listChannelMembers(channelId)
     ]);
 
-    const members = memberRows.map((m) => ({
-        userId: m.userId,
-        role: m.role,
-        name: m.user.preferences?.displayName ?? m.user.name,
-        colorHue: m.user.preferences?.colorHue ?? 220,
-        avatarUrl: m.user.preferences?.avatarUrl ?? null
-    }));
+    const members = toChannelMembers(memberRows);
     // Exclude yourself from the @-mention list.
     const composerMembers = members
         .filter((m) => m.userId !== user.id)
@@ -78,9 +73,6 @@ export default async function ChannelPage({
     // Your display identity, used to render an optimistic message before the
     // server confirms it.
     const composerAuthor = composerAuthorFor(user.id, user.name, members);
-
-    const memberIds = new Set(memberRows.map((m) => m.userId));
-    const addableUsers = approvedUsers.filter((u) => !memberIds.has(u.id));
 
     const latestMessageId = messages.length > 0 ? messages[messages.length - 1]!.id : null;
 
@@ -115,13 +107,8 @@ export default async function ChannelPage({
                 {membership && (
                     <MarkReadOnView channelId={channel.id} latestMessageId={latestMessageId} />
                 )}
-                <ChannelHeader
-                    channel={channel}
-                    canManage={canManage}
-                    canManageMembers={canManageMembers}
-                    members={members}
-                    addableUsers={addableUsers}
-                />
+                {/* The channel header is rendered by this segment's layout, so it
+                    survives navigation between this view and the gallery. */}
 
                 <OptimisticMessagesProvider>
                     <MessageScroller

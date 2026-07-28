@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql, type SQL }
 
 import { db } from "@workspace/db/client";
 import {
+    attachments,
     channelMembers,
     channels,
     linkPreviews,
@@ -16,6 +17,7 @@ import {
 import { extractUrls } from "@/lib/messaging/links";
 import { htmlToText } from "@/lib/messaging/rich-text";
 import type { ChannelRole } from "@/lib/permissions";
+import { cache } from "react";
 
 const authorWith = {
     columns: { id: true, name: true },
@@ -389,12 +391,125 @@ export async function listThreadMessages(rootId: string, userId: string) {
 
 export type ThreadMessage = Awaited<ReturnType<typeof listThreadMessages>>[number];
 
-export async function listChannelMembers(channelId: string) {
+/** Memoized per request: the channel layout (for the header) and the channel page
+ * (for the composer's mention list) both need this, and neither should pay twice. */
+export const listChannelMembers = cache(async (channelId: string) => {
     return db.query.channelMembers.findMany({
         where: eq(channelMembers.channelId, channelId),
         orderBy: asc(channelMembers.joinedAt),
         with: { user: authorWith }
     });
-}
+});
 
 export type ChannelMemberWithUser = Awaited<ReturnType<typeof listChannelMembers>>[number];
+
+/**
+ * Flatten member rows into the shape the UI renders from, resolving the display
+ * name and identity-color fallbacks once. Shared by the channel layout (header,
+ * member avatars) and the channel page (the composer's mention list), which would
+ * otherwise each carry their own copy of these fallbacks and could drift.
+ */
+export function toChannelMembers(rows: ChannelMemberWithUser[]) {
+    return rows.map((m) => ({
+        userId: m.userId,
+        role: m.role,
+        name: m.user.preferences?.displayName ?? m.user.name,
+        colorHue: m.user.preferences?.colorHue ?? 220,
+        avatarUrl: m.user.preferences?.avatarUrl ?? null
+    }));
+}
+
+/** How many images one gallery page returns. */
+export const GALLERY_PAGE_SIZE = 60;
+
+/**
+ * Every image posted in a channel, oldest first — the channel gallery.
+ *
+ * Includes thread replies' images (they were shared in the channel) and excludes
+ * soft-deleted messages, so a tombstoned post's photos disappear from the gallery
+ * too. `kind` is the app's own classification, so PDFs and other files are
+ * filtered out here rather than by guessing at the mime type.
+ *
+ * Paginated by offset rather than a keyset cursor, deliberately. Attachments
+ * inserted in one transaction share an identical `created_at` (Postgres `now()` is
+ * transaction-start time), so a multi-image post is a block of rows a cursor
+ * cannot split — a `createdAt > cursor` page boundary landing inside such a block
+ * would return it forever. Offsets are safe in this direction because the sort is
+ * ascending and new images only ever append past the end, so an already-loaded
+ * page's offsets never shift.
+ */
+export async function listChannelImages(
+    channelId: string,
+    opts: { limit?: number; offset?: number } = {}
+) {
+    const limit = opts.limit ?? GALLERY_PAGE_SIZE;
+
+    const rows = await db
+        .select({
+            id: attachments.id,
+            secureUrl: attachments.secureUrl,
+            width: attachments.width,
+            height: attachments.height,
+            createdAt: attachments.createdAt,
+            messageId: attachments.messageId,
+            uploaderId: attachments.uploaderId,
+            uploaderName: user.name,
+            uploaderDisplayName: userPreferences.displayName,
+            uploaderAvatarUrl: userPreferences.avatarUrl,
+            uploaderColorHue: userPreferences.colorHue
+        })
+        .from(attachments)
+        .innerJoin(messages, eq(messages.id, attachments.messageId))
+        .innerJoin(user, eq(user.id, attachments.uploaderId))
+        .leftJoin(userPreferences, eq(userPreferences.userId, attachments.uploaderId))
+        .where(
+            and(
+                eq(messages.channelId, channelId),
+                isNull(messages.deletedAt),
+                eq(attachments.kind, "image")
+            )
+        )
+        // id breaks ties so a multi-image post's rows keep a stable order between
+        // pages — without it the offset window could shuffle and drop an image.
+        .orderBy(asc(attachments.createdAt), asc(attachments.id))
+        .limit(limit)
+        .offset(opts.offset ?? 0);
+
+    return rows.map((r) => ({
+        id: r.id,
+        secureUrl: r.secureUrl,
+        width: r.width,
+        height: r.height,
+        // Serialized here rather than at each boundary: this crosses to the client
+        // from both the gallery page and its "load more" action, and a single
+        // representation keeps those two paths from disagreeing. The grid formats
+        // it in the viewer's own locale and timezone.
+        createdAt: r.createdAt.toISOString(),
+        messageId: r.messageId,
+        uploader: {
+            id: r.uploaderId,
+            name: r.uploaderDisplayName ?? r.uploaderName,
+            avatarUrl: r.uploaderAvatarUrl,
+            colorHue: r.uploaderColorHue ?? 220
+        }
+    }));
+}
+
+export type ChannelImage = Awaited<ReturnType<typeof listChannelImages>>[number];
+
+/** How many images the channel gallery holds in total. */
+export async function countChannelImages(channelId: string): Promise<number> {
+    const rows = await db
+        .select({ total: sql<number>`COUNT(*)::int` })
+        .from(attachments)
+        .innerJoin(messages, eq(messages.id, attachments.messageId))
+        .where(
+            and(
+                eq(messages.channelId, channelId),
+                isNull(messages.deletedAt),
+                eq(attachments.kind, "image")
+            )
+        );
+
+    return Number(rows[0]?.total ?? 0);
+}
