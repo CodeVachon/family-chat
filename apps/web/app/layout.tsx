@@ -15,6 +15,14 @@ import "@workspace/ui/globals.css";
 import { ServiceWorkerRegistrar } from "@/components/app/service-worker-registrar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getSession } from "@/lib/dal";
+import {
+    APPLE_SPLASH_DEVICES,
+    appleIconPath,
+    appleSplashPath,
+    PWA_BRAND_COLOR,
+    splashMediaQuery
+} from "@/lib/pwa/brand";
+import { pwaAssetVersion } from "@/lib/pwa/version";
 import { getAppSettings } from "@/lib/queries/app-settings";
 import { getUserPreferences } from "@/lib/queries/preferences";
 import { Toaster } from "@workspace/ui/components/sonner";
@@ -26,15 +34,29 @@ export async function generateMetadata(): Promise<Metadata> {
     await connection();
     const { name, iconUrl } = await getAppSettings();
     const icon = iconUrl ?? "/icon.svg";
+    const version = pwaAssetVersion(iconUrl);
+
     return {
         title: { default: name, template: `%s · ${name}` },
-        appleWebApp: { capable: true, statusBarStyle: "default", title: name },
-        icons: { icon, apple: icon }
+        appleWebApp: {
+            capable: true,
+            statusBarStyle: "default",
+            title: name,
+            // iOS doesn't derive a launch screen from the manifest: without these
+            // it paints a flat fill, so a cold start looked like a broken page.
+            startupImage: APPLE_SPLASH_DEVICES.map((device) => ({
+                url: appleSplashPath(device, version),
+                media: splashMediaQuery(device)
+            }))
+        },
+        // The apple-touch icon must be raster — iOS ignores an SVG here and falls
+        // back to a screenshot of the page as the home-screen icon.
+        icons: { icon, apple: appleIconPath(version) }
     };
 }
 
 export const viewport: Viewport = {
-    themeColor: "#2563eb"
+    themeColor: PWA_BRAND_COLOR
 };
 
 const merriweatherHeading = Merriweather({ subsets: ["latin"], variable: "--font-heading" });
