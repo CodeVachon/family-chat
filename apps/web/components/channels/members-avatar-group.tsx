@@ -32,13 +32,17 @@ export function MembersAvatarGroup({ members }: { members: Member[] }) {
 
     return (
         <AvatarGroup>
-            {shown.map((m) => {
+            {shown.map((m, index) => {
                 const online = onlineUserIds.has(m.userId);
                 return (
-                    // Avatars overlap (-space-x-2) with later ones painting on top,
-                    // so lift online avatars above their neighbors (their badge
-                    // reads clearly) and fade offline ones.
-                    <Avatar key={m.userId} className={online ? "relative z-10" : "opacity-60"}>
+                    // Avatars overlap (-space-x-2). Stack them left-on-top by giving
+                    // each a descending z-index, so the leftmost (online-sorted-first)
+                    // avatar reads clearly and each one to the right sits behind.
+                    <Avatar
+                        key={m.userId}
+                        className={online ? "relative" : "relative opacity-60"}
+                        style={{ zIndex: shown.length - index }}
+                    >
                         {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt={m.name} /> : null}
                         <AvatarFallback
                             style={{ color: `oklch(var(--user-l) var(--user-c) ${m.colorHue})` }}
@@ -49,7 +53,11 @@ export function MembersAvatarGroup({ members }: { members: Member[] }) {
                     </Avatar>
                 );
             })}
-            {overflow > 0 && <AvatarGroupCount>+{overflow}</AvatarGroupCount>}
+            {overflow > 0 && (
+                <AvatarGroupCount className="relative" style={{ zIndex: 0 }}>
+                    +{overflow}
+                </AvatarGroupCount>
+            )}
         </AvatarGroup>
     );
 }
