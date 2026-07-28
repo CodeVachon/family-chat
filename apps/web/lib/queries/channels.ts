@@ -151,6 +151,35 @@ export async function listVisibleChannels(userId: string) {
 export type VisibleChannel = Awaited<ReturnType<typeof listVisibleChannels>>[number];
 
 /**
+ * Total unread messages across every channel the user has joined — the number
+ * shown on the installed app's icon badge.
+ *
+ * Deliberately mirrors the per-channel `unreadCount` in
+ * {@link listVisibleChannels} and sums over the same set (memberships only, since
+ * non-members get no unread tracking, and archived channels included because the
+ * in-app tab badge counts them too). Kept as one aggregate query rather than
+ * reusing `listVisibleChannels`, because the service worker asks for this on
+ * every push and doesn't need the channel rows.
+ */
+export async function countUnreadForUser(userId: string): Promise<number> {
+    const rows = await db
+        .select({
+            total: sql<number>`COALESCE(SUM((
+                SELECT COUNT(*) FROM ${messages} m
+                WHERE m.channel_id = ${channelMembers.channelId}
+                  AND m.deleted_at IS NULL
+                  AND m.type <> 'system'
+                  AND m.author_user_id <> ${userId}
+                  AND (${channelMembers.lastReadAt} IS NULL OR m.created_at > ${channelMembers.lastReadAt})
+            )), 0)::int`
+        })
+        .from(channelMembers)
+        .where(eq(channelMembers.userId, userId));
+
+    return Number(rows[0]?.total ?? 0);
+}
+
+/**
  * The id of the channel the user was most recently active in — the joined
  * `channel_members` row with the greatest `lastReadAt` whose channel still
  * exists and isn't archived. Used to drop the user back into that channel on

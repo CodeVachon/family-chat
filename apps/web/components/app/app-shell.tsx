@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AppBadge } from "@/components/app/app-badge";
 import { ConnectionBanner } from "@/components/app/connection-banner";
 import { FaviconBadge } from "@/components/app/favicon-badge";
 import {
@@ -123,6 +124,7 @@ export function AppShell({
         <MobileSidebarProvider>
             <div data-component="AppShell" className="grid h-svh md:grid-cols-[16rem_1fr]">
                 <FaviconBadge count={totalUnread} />
+                <AppBadge count={totalUnread} />
                 <QuickSwitcher channels={channels} />
                 {/* Desktop sidebar */}
                 <aside className="hidden border-r bg-card md:block">
