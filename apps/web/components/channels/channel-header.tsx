@@ -3,6 +3,7 @@ import { Lock, Settings } from "lucide-react";
 import { SidebarToggle } from "@/components/app/mobile-sidebar";
 import { ChannelDialog } from "@/components/channels/channel-dialog";
 import { ChannelIcon } from "@/components/channels/channel-icon";
+import { ChannelNav, ChannelViewLabel } from "@/components/channels/channel-nav";
 import { MembersAvatarGroup } from "@/components/channels/members-avatar-group";
 import { MembersDialog } from "@/components/channels/members-dialog";
 import type { Channel } from "@workspace/db/schema";
@@ -50,6 +51,9 @@ export function ChannelHeader({
                             Archived
                         </Badge>
                     )}
+                    {/* Which view you're in, for the breakpoint where the toggle
+                        is collapsed into the overflow menu and can't show it. */}
+                    <ChannelViewLabel channelId={channel.id} />
                 </div>
                 {channel.description && (
                     <p className="truncate text-xs text-muted-foreground">{channel.description}</p>
@@ -72,6 +76,10 @@ export function ChannelHeader({
                 }
             />
 
+            <ChannelNav channelId={channel.id} canManage={canManage} />
+
+            {/* Desktop-only: on mobile, settings lives in ChannelNav's overflow
+                menu, which is the only affordance that fits at this height. */}
             {canManage && (
                 <ChannelDialog
                     channel={{
@@ -84,7 +92,12 @@ export function ChannelHeader({
                         isArchived: channel.isArchived
                     }}
                     trigger={
-                        <Button variant="ghost" size="icon-sm" aria-label="Channel settings">
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Channel settings"
+                            className="hidden md:inline-flex"
+                        >
                             <Settings className="size-4" />
                         </Button>
                     }
