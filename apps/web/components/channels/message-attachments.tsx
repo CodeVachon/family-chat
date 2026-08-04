@@ -17,7 +17,16 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
     return (
         <div data-component="MessageAttachments" className="flex flex-col gap-2">
             {images.length > 0 && (
-                <ImageGallery images={images.map((a) => ({ id: a.id, secureUrl: a.secureUrl }))} />
+                <ImageGallery
+                    images={images.map((a) => ({
+                        id: a.id,
+                        secureUrl: a.secureUrl,
+                        // Passed so the gallery can reserve each image's height
+                        // before it loads.
+                        width: a.width,
+                        height: a.height
+                    }))}
+                />
             )}
             {videos.map((a) => (
                 <VideoAttachment
@@ -38,7 +47,9 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
                         secureUrl: a.secureUrl,
                         resourceType: a.resourceType,
                         originalFilename: a.originalFilename,
-                        bytes: a.bytes
+                        bytes: a.bytes,
+                        width: a.width,
+                        height: a.height
                     }}
                 />
             ))}
