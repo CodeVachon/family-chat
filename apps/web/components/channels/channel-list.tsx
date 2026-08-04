@@ -123,30 +123,27 @@ function ChannelLink({
     );
 }
 
-/** A labeled block of channel rows. Renders nothing when the group is empty. */
+/** A block of channel rows, optionally labeled. Renders nothing when the group is
+ * empty. Spacing is applied via `className` on the group itself rather than on the
+ * label, so an unlabeled group still separates from the one above it. */
 function ChannelSection({
     label,
-    labelClassName,
+    className,
     channels,
     activeId,
     onNavigate
 }: {
     label?: string;
-    labelClassName?: string;
+    className?: string;
     channels: SidebarChannel[];
     activeId?: string;
     onNavigate?: () => void;
 }) {
     if (channels.length === 0) return null;
     return (
-        <>
+        <div data-component="ChannelSection" className={cn("flex flex-col gap-1", className)}>
             {label && (
-                <span
-                    className={cn(
-                        "px-2 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase",
-                        labelClassName
-                    )}
-                >
+                <span className="px-2 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     {label}
                 </span>
             )}
@@ -158,7 +155,7 @@ function ChannelSection({
                     onNavigate={onNavigate}
                 />
             ))}
-        </>
+        </div>
     );
 }
 
@@ -205,22 +202,23 @@ export function ChannelList({
             )}
 
             <ChannelSection
-                label={favorites.length > 0 ? "Favorites" : undefined}
+                label="Favorites"
                 channels={favorites}
                 activeId={activeId}
                 onNavigate={onNavigate}
             />
             <ChannelSection
-                // A "Channels" divider only makes sense once favorites are split off.
-                label={favorites.length > 0 ? "Channels" : undefined}
-                labelClassName="mt-2"
+                // Deliberately unlabeled: the header above already reads "Channels",
+                // and a second "Channels" divider here rendered as a duplicate
+                // heading. Favorites are set apart by spacing instead.
+                className={favorites.length > 0 ? "mt-2" : undefined}
                 channels={unfavorited}
                 activeId={activeId}
                 onNavigate={onNavigate}
             />
             <ChannelSection
                 label="Archived"
-                labelClassName="mt-3"
+                className="mt-3"
                 channels={archived}
                 activeId={activeId}
                 onNavigate={onNavigate}
