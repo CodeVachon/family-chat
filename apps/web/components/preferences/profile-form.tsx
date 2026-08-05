@@ -10,6 +10,7 @@ import { AvatarEditor } from "@/components/upload/avatar-editor";
 import { CropFieldControls } from "@/components/upload/crop-field-controls";
 import { useCropField } from "@/components/upload/use-crop-field";
 import { UserAvatar, UserName } from "@/components/user/user-identity";
+import { identityColor, identityHueGradient } from "@/lib/color/identity";
 import { updateAvatar, updateProfile } from "@/lib/actions/preferences";
 import { formatPhoneDisplay, formatPhoneInput } from "@/lib/phone";
 import { avatarUrl as avatarTransform, type AvatarCrop } from "@/lib/cloudinary/url";
@@ -29,17 +30,15 @@ function Preview({
     avatarUrl: string | null;
     dark?: boolean;
 }) {
-    const tokens = dark
-        ? { "--user-l": "0.78", "--user-c": "0.11" }
-        : { "--user-l": "0.5", "--user-c": "0.13" };
-
     return (
         <div
             data-component="Preview"
-            style={tokens as React.CSSProperties}
             className={cn(
                 "flex items-center gap-2 rounded-lg border p-3",
-                dark ? "border-zinc-700 bg-zinc-900" : "border-zinc-200 bg-white"
+                // The literal `dark` class is what selects the dark identity tint
+                // (see the [data-user-tint] rules in globals.css), so this preview
+                // resolves the same way the real dark theme does.
+                dark ? "dark border-zinc-700 bg-zinc-900" : "border-zinc-200 bg-white"
             )}
         >
             <UserAvatar name={name} colorHue={colorHue} avatarUrl={avatarUrl} />
@@ -189,11 +188,15 @@ export function ProfileForm({
                 <p className="text-sm text-muted-foreground">
                     Used for your name and avatar ring across the app.
                 </p>
+                {/* Swatch, thumb and track all use the light-theme identity color
+                    the app actually renders. They previously used a fixed, more
+                    saturated chroma (0.18–0.2) than the render (0.11–0.13), so the
+                    picker advertised colors it never produced. */}
                 <div className="flex items-center gap-3">
                     <span
                         aria-hidden
                         className="size-7 shrink-0 rounded-full border"
-                        style={{ background: `oklch(0.6 0.18 ${colorHue})` }}
+                        style={{ background: identityColor("light", colorHue) }}
                     />
                     <input
                         type="range"
@@ -203,7 +206,10 @@ export function ProfileForm({
                         onChange={(e) => setColorHue(Number(e.target.value))}
                         className="hue-slider"
                         style={
-                            { "--hue-color": `oklch(0.6 0.18 ${colorHue})` } as React.CSSProperties
+                            {
+                                "--hue-color": identityColor("light", colorHue),
+                                background: identityHueGradient("light")
+                            } as React.CSSProperties
                         }
                         aria-label="Your name color"
                     />

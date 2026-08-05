@@ -2,6 +2,7 @@
 
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { initials } from "@/components/user/user-identity";
+import { identityTintStyle } from "@/lib/color/identity";
 import {
     Avatar,
     AvatarBadge,
@@ -45,7 +46,8 @@ export function MembersAvatarGroup({ members }: { members: Member[] }) {
                     >
                         {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt={m.name} /> : null}
                         <AvatarFallback
-                            style={{ color: `oklch(var(--user-l) var(--user-c) ${m.colorHue})` }}
+                            data-user-tint
+                            style={identityTintStyle(m.colorHue) as React.CSSProperties}
                         >
                             {initials(m.name)}
                         </AvatarFallback>

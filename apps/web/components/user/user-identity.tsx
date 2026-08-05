@@ -1,3 +1,4 @@
+import { identityTintStyle } from "@/lib/color/identity";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 
@@ -13,10 +14,6 @@ export function initials(name: string): string {
     );
 }
 
-function colorVar(hue: number): string {
-    return `oklch(var(--user-l) var(--user-c) ${hue})`;
-}
-
 /** A user's display name tinted with their chosen identity color. */
 export function UserName({
     name,
@@ -30,8 +27,9 @@ export function UserName({
     return (
         <span
             data-component="UserName"
+            data-user-tint
             className={cn("font-medium", className)}
-            style={{ color: colorVar(colorHue) }}
+            style={identityTintStyle(colorHue) as React.CSSProperties}
         >
             {name}
         </span>
@@ -52,8 +50,9 @@ export function UserAvatar({
 }) {
     return (
         <Avatar
+            data-user-ring
             className={cn("ring-2", className)}
-            style={{ ["--tw-ring-color" as string]: colorVar(colorHue) }}
+            style={identityTintStyle(colorHue) as React.CSSProperties}
         >
             {avatarUrl ? <AvatarImage src={avatarUrl} alt={name} /> : null}
             <AvatarFallback>{initials(name)}</AvatarFallback>

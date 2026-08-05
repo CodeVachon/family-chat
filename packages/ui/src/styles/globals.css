@@ -40,16 +40,9 @@
     --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
     --sidebar-border: oklch(0.925 0.005 214.3);
     --sidebar-ring: oklch(0.723 0.014 214.4);
-    /* User identity color: each user picks a hue; lightness/chroma are clamped
-       per theme so the resulting oklch() stays readable. Used as
-       oklch(var(--user-l) var(--user-c) <hue>) for names + avatar rings. */
-    --user-l: 0.5;
-    --user-c: 0.13;
 }
 
 .dark {
-    --user-l: 0.78;
-    --user-c: 0.11;
     --background: oklch(0.148 0.004 228.8);
     --foreground: oklch(0.987 0.002 197.1);
     --card: oklch(0.218 0.008 223.9);
@@ -257,9 +250,36 @@ html[data-font-family="atkinson"] {
     border-radius: 50%;
 }
 
+/* User identity color. A user picks only a hue; the chroma is clamped to that
+   hue's in-gamut maximum in apps/web/lib/color/identity.ts, which emits a finished
+   color per theme as --user-tint-light / --user-tint-dark. Two values are needed
+   because the achievable maximum differs between the themes' lightnesses, so no
+   single number serves both.
+
+   Deliberately UNLAYERED: these replace inline `style` declarations, which beat
+   every utility class. Inside @layer components they would instead lose to the
+   utilities layer — `AvatarFallback`'s own `text-muted-foreground` would strip the
+   tint from member initials, and the `ring-background` passed by the profile panel
+   would override the avatar ring. Unlayered rules outrank all layered CSS, which
+   preserves the previous behavior. */
+[data-user-tint] {
+    color: var(--user-tint-light);
+}
+.dark [data-user-tint] {
+    color: var(--user-tint-dark);
+}
+/* Same values, applied as an avatar's ring instead of its text color. */
+[data-user-ring] {
+    --tw-ring-color: var(--user-tint-light);
+}
+.dark [data-user-ring] {
+    --tw-ring-color: var(--user-tint-dark);
+}
+
 @layer components {
-    /* Identity-color hue picker: a full-spectrum rainbow track with a thumb
-       tinted to the currently selected color (--hue-color, set inline). */
+    /* Identity-color hue picker. Geometry only — both the track gradient and the
+       thumb color (--hue-color) are set inline from identity.ts so the picker
+       shows the colors the app will actually render. */
     .hue-slider {
         -webkit-appearance: none;
         appearance: none;
@@ -267,16 +287,6 @@ html[data-font-family="atkinson"] {
         height: 0.75rem;
         border-radius: 9999px;
         outline: none;
-        background: linear-gradient(
-            to right,
-            oklch(0.65 0.2 0),
-            oklch(0.65 0.2 60),
-            oklch(0.65 0.2 120),
-            oklch(0.65 0.2 180),
-            oklch(0.65 0.2 240),
-            oklch(0.65 0.2 300),
-            oklch(0.65 0.2 360)
-        );
     }
     .hue-slider::-webkit-slider-thumb {
         -webkit-appearance: none;
