@@ -1,5 +1,7 @@
 import DOMPurify from "isomorphic-dompurify";
 
+import { identityTintCss } from "@/lib/color/identity";
+
 /**
  * Shared helpers for the rich-text (Tiptap) message pipeline.
  *
@@ -135,13 +137,18 @@ export function renderMessageHtml(body: string, mentions: MentionHue[]): string 
         if (node.nodeType !== 1 || typeof node.getAttribute !== "function") return;
         if (node.tagName === "SPAN" && node.getAttribute("data-type") === "mention") {
             // Coerce to a finite number clamped to a valid oklch hue (0–360)
-            // before interpolating. This style is injected *after* DOMPurify's
-            // attribute sanitization, so the value is never re-validated — keep
-            // it strictly numeric so a future non-numeric/user-influenced
-            // colorHue can't inject CSS. Falls back to the default hue (220).
+            // before use. This style is injected *after* DOMPurify's attribute
+            // sanitization, so the value is never re-validated — it must be
+            // impossible for a non-numeric/user-influenced colorHue to inject CSS.
+            // `identityTintCss` emits only numbers it derived itself from a
+            // normalized hue, so that holds; this clamp is the first line of
+            // defense. Falls back to the default hue (220).
             const rawHue = Number(hueById.get(node.getAttribute("data-id") ?? ""));
             const hue = Number.isFinite(rawHue) ? Math.min(360, Math.max(0, rawHue)) : 220;
-            node.setAttribute("style", `color: oklch(var(--user-l) var(--user-c) ${hue})`);
+            // The color itself is applied by the `[data-user-tint]` rules in
+            // globals.css, which choose the light or dark variant.
+            node.setAttribute("data-user-tint", "");
+            node.setAttribute("style", identityTintCss(hue));
         }
         if (node.tagName === "A") {
             node.setAttribute("target", "_blank");

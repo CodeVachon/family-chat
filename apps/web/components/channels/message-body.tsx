@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 
+import { identityTintStyle } from "@/lib/color/identity";
 import { isHtmlBody, renderMessageHtml } from "@/lib/messaging/rich-text";
 import type { MentionSummary } from "@/lib/queries/channels";
 
@@ -30,8 +31,9 @@ function PlainTextBody({ body, mentions }: { body: string; mentions: MentionSumm
         nodes.push(
             <span
                 key={key++}
+                data-user-tint
                 className="rounded bg-primary/10 px-0.5 font-medium"
-                style={{ color: `oklch(var(--user-l) var(--user-c) ${mention?.colorHue ?? 220})` }}
+                style={identityTintStyle(mention?.colorHue ?? 220) as React.CSSProperties}
             >
                 @{match[1]}
             </span>
