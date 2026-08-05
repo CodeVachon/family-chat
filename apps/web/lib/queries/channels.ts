@@ -318,6 +318,44 @@ export async function listVisibleChannelIds(userId: string): Promise<string[]> {
     return rows.map((r) => r.id);
 }
 
+/**
+ * The batched form of {@link listVisibleChannelIds}, for the realtime broker's
+ * fan-out re-resolve — which needs every connected user at once and previously
+ * paid one round-trip each.
+ *
+ * Two queries regardless of how many users are asked about: every user sees the
+ * same public channels, so those are fetched once and shared, and only
+ * private-channel membership is per-user. Expressed as the same rule as the
+ * single-user version (public channels, plus private ones you belong to) so the
+ * two cannot drift.
+ *
+ * Every requested user appears in the result, with an empty array when they can
+ * see nothing — the caller has to tell "resolved to nothing" apart from "wasn't
+ * asked about".
+ */
+export async function listVisibleChannelIdsForUsers(
+    userIds: string[]
+): Promise<Map<string, string[]>> {
+    const unique = [...new Set(userIds)].filter(Boolean);
+    const byUser = new Map<string, string[]>();
+    if (unique.length === 0) return byUser;
+
+    const [publicRows, privateMemberRows] = await Promise.all([
+        db.select({ id: channels.id }).from(channels).where(eq(channels.isPrivate, false)),
+        db
+            .select({ userId: channelMembers.userId, channelId: channelMembers.channelId })
+            .from(channelMembers)
+            .innerJoin(channels, eq(channels.id, channelMembers.channelId))
+            .where(and(inArray(channelMembers.userId, unique), eq(channels.isPrivate, true)))
+    ]);
+
+    const publicIds = publicRows.map((r) => r.id);
+    for (const userId of unique) byUser.set(userId, [...publicIds]);
+    for (const row of privateMemberRows) byUser.get(row.userId)?.push(row.channelId);
+
+    return byUser;
+}
+
 export async function getChannel(channelId: string) {
     return db.query.channels.findFirst({ where: eq(channels.id, channelId) });
 }

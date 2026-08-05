@@ -2,7 +2,7 @@ import "server-only";
 
 import postgres from "postgres";
 
-import { listVisibleChannelIds } from "@/lib/queries/channels";
+import { listVisibleChannelIdsForUsers } from "@/lib/queries/channels";
 
 export type RealtimeEvent = {
     type:
@@ -134,23 +134,41 @@ class Broker {
         }
     }
 
-    /** Re-resolve the channel set of every distinct connected user (once each). */
+    /**
+     * Re-resolve the channel set of every distinct connected user.
+     *
+     * One batched query for all of them, then a single pass over the subscribers
+     * to apply it. Previously this was one awaited round-trip per user, each
+     * followed by a full scan of the subscriber map — so the pass was serialized
+     * on the database and quadratic in connection count.
+     *
+     * On query failure every subscriber keeps its existing set. A stale set is the
+     * safe direction: clearing them would mute delivery, and widening them would
+     * leak. The next `channels.changed` — or a reconnect, which resolves fresh —
+     * corrects it.
+     */
     private async resolveAllSubscriptions(): Promise<void> {
         const userIds = new Set<string>();
         for (const sub of this.subscribers.values()) userIds.add(sub.userId);
-        for (const userId of userIds) await this.resolveUserSubscription(userId);
-    }
+        if (userIds.size === 0) return;
 
-    /** Replace one user's subscription set; keeps the old set on query failure. */
-    private async resolveUserSubscription(userId: string): Promise<void> {
-        let next: Set<string>;
+        let byUser: Map<string, string[]>;
         try {
-            next = new Set(await listVisibleChannelIds(userId));
+            byUser = await listVisibleChannelIdsForUsers([...userIds]);
         } catch {
             return;
         }
+
+        // One Set per user, shared by that user's connections (tabs/devices). The
+        // sets are read-only once assigned, so sharing keeps allocation
+        // proportional to users rather than to connections — matching what the
+        // per-user version did.
+        const setByUser = new Map<string, Set<string>>();
+        for (const [userId, channelIds] of byUser) setByUser.set(userId, new Set(channelIds));
+
         for (const sub of this.subscribers.values()) {
-            if (sub.userId === userId) sub.channelIds = next;
+            const next = setByUser.get(sub.userId);
+            if (next) sub.channelIds = next;
         }
     }
 
