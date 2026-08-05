@@ -60,13 +60,17 @@ export function ComposerAttachment({
                 </div>
             )}
 
+            {/* 24px, the WCAG 2.5.8 minimum target — the previous 16px missed it on
+                every viewport. Deliberately smaller than the 44px used on the
+                composer's own actions: this sits inside a 64px tile, where a
+                finger-sized badge would cover most of the thumbnail. */}
             <button
                 type="button"
                 aria-label="Remove attachment"
                 onClick={() => onRemove(item.id)}
-                className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
             >
-                <X className="size-3" />
+                <X className="size-3.5" />
             </button>
         </div>
     );

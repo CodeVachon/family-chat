@@ -275,16 +275,24 @@ export function Composer({
                         e.target.value = "";
                     }}
                 />
+                {/* Both actions are finger-sized (44px, the Apple HIG / WCAG 2.5.5
+                    target) on touch viewports and fall back to the compact desktop
+                    sizing at md, where a pointer makes 32px comfortable. */}
                 <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     aria-label="Attach files"
+                    className="size-11 md:size-8"
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    <Paperclip className="size-4" />
+                    <Paperclip className="size-5 md:size-4" />
                 </Button>
-                <Button onClick={() => void send()} disabled={!canSend}>
+                <Button
+                    onClick={() => void send()}
+                    disabled={!canSend}
+                    className="h-11 px-5 md:h-8 md:px-3"
+                >
                     Send
                 </Button>
             </div>
