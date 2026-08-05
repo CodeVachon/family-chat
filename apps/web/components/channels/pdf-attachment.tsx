@@ -14,7 +14,17 @@ export type PdfAttachmentData = {
     resourceType: string;
     originalFilename: string | null;
     bytes: number | null;
+    /** Page dimensions Cloudinary reported for the first page. Optional — absent
+     * on older rows. */
+    width?: number | null;
+    height?: number | null;
 };
+
+/** Portrait letter, the overwhelmingly common case, for documents whose page
+ * dimensions we don't know. Reserving the wrong height still beats reserving
+ * none: an unsized preview is 0px tall until it decodes and then shoves
+ * everything below it down. */
+const FALLBACK_ASPECT_RATIO = "8.5 / 11";
 
 export function PdfAttachment({ attachment }: { attachment: PdfAttachmentData }) {
     const [open, setOpen] = useState(false);
@@ -22,6 +32,10 @@ export function PdfAttachment({ attachment }: { attachment: PdfAttachmentData })
     const name = attachment.originalFilename ?? "document.pdf";
     const meta = ["PDF", formatBytes(attachment.bytes)].filter(Boolean).join(" · ");
     const showThumb = attachment.resourceType === "image" && !thumbFailed;
+    const aspectRatio =
+        attachment.width && attachment.height
+            ? `${attachment.width} / ${attachment.height}`
+            : FALLBACK_ASPECT_RATIO;
 
     return (
         <>
@@ -38,6 +52,9 @@ export function PdfAttachment({ attachment }: { attachment: PdfAttachmentData })
                         onError={() => setThumbFailed(true)}
                         loading="lazy"
                         decoding="async"
+                        // Occupies its final height on first paint rather than
+                        // expanding from zero once the render arrives.
+                        style={{ aspectRatio }}
                         className="max-h-72 w-full border-b bg-muted object-contain"
                     />
                 ) : (
