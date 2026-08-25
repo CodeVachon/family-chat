@@ -1,7 +1,8 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { z, ZodError, type ZodType } from "zod";
 
 import { db } from "@workspace/db/client";
@@ -30,7 +31,7 @@ import {
     htmlToText,
     sanitizeMessageHtml
 } from "@/lib/messaging/rich-text";
-import { canApp, canInChannel, isAppStaff } from "@/lib/permissions";
+import { canApp, canInChannel, isAppStaff, type ChannelAction } from "@/lib/permissions";
 import { pushForNewMessage } from "@/lib/push/notify";
 import { getBroker } from "@/lib/realtime/broker";
 import { createRealtimeStream } from "@/lib/realtime/stream";
@@ -39,7 +40,6 @@ import {
     GALLERY_PAGE_SIZE,
     countChannelImages,
     countUnreadForUser,
-    getChannel,
     listChannelActivity,
     listChannelImages,
     listChannelMembers,
@@ -53,6 +53,18 @@ import { getAppSettings } from "@/lib/queries/app-settings";
 import { getUserPreferences } from "@/lib/queries/preferences";
 import { getUserProfile } from "@/lib/queries/profile";
 import { listApprovedUsers } from "@/lib/queries/users";
+import { validateDefaultChannelIds } from "@/lib/services/app-settings";
+import {
+    addChannelMember,
+    getChannelMembership,
+    joinPublicChannel,
+    leaveChannel,
+    markChannelRead,
+    removeChannelMember,
+    ServiceError,
+    updateChannelMemberRole
+} from "@/lib/services/channel-members";
+import { memberIdsIn } from "@/lib/services/messages";
 import {
     attachmentInputSchema,
     channelFormSchema,
@@ -111,14 +123,18 @@ async function requireChannel(actor: ApiUser, channelId: string) {
     return authorizeApiChannel(actor, id(channelId, "channel id"), "channel:view");
 }
 
-async function memberIdsIn(channelId: string, userIds: string[]): Promise<string[]> {
-    const ids = [...new Set(userIds)].filter(Boolean);
-    if (ids.length === 0) return [];
-    const rows = await db
-        .select({ userId: channelMembers.userId })
-        .from(channelMembers)
-        .where(and(eq(channelMembers.channelId, channelId), inArray(channelMembers.userId, ids)));
-    return rows.map((row) => row.userId);
+async function channelRequest(context: Context, action: ChannelAction) {
+    const actor = await requireApiUser(context.req.raw.headers);
+    const channelId = id(context.req.param("channelId") ?? "", "channel id");
+    await authorizeApiChannel(actor, channelId, action);
+    return { actor, channelId };
+}
+
+async function messageRequest(context: Context) {
+    const actor = await requireApiUser(context.req.raw.headers);
+    const messageId = id(context.req.param("messageId") ?? "", "message id");
+    const message = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
+    return { actor, messageId, message };
 }
 
 async function updatePreferences(
@@ -148,6 +164,9 @@ const api = new Hono().basePath("/api/v1");
 
 api.onError((error, context) => {
     if (error instanceof ApiError) {
+        return context.json({ error: { message: error.message } }, error.status as 400);
+    }
+    if (error instanceof ServiceError) {
         return context.json({ error: { message: error.message } }, error.status as 400);
     }
     if (error instanceof ZodError) {
@@ -293,49 +312,14 @@ api.delete("/channels/:channelId", async (context) => {
 api.post("/channels/:channelId/join", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
-    const channel = await getChannel(channelId);
-    if (!channel) throw new ApiError(404, "Channel not found");
-    if (channel.isPrivate) throw new ApiError(403, "Cannot join a private channel");
-    await db.transaction(async (tx) => {
-        const inserted = await tx
-            .insert(channelMembers)
-            .values({ channelId, userId: actor.id, role: "user" })
-            .onConflictDoNothing()
-            .returning({ id: channelMembers.id });
-        if (inserted.length) {
-            await insertSystemMessage(tx, {
-                channelId,
-                event: "join",
-                subjectUserId: actor.id,
-                actorUserId: actor.id
-            });
-        }
-    });
+    await joinPublicChannel(channelId, actor.id);
     return context.json({ joined: true });
 });
 
 api.post("/channels/:channelId/leave", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
-    const membership = await db.query.channelMembers.findFirst({
-        where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id))
-    });
-    if (membership?.role === "owner") throw new ApiError(409, "The channel owner cannot leave");
-    await db.transaction(async (tx) => {
-        const removed = await tx
-            .delete(channelMembers)
-            .where(
-                and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id))
-            )
-            .returning({ id: channelMembers.id });
-        if (removed.length)
-            await insertSystemMessage(tx, {
-                channelId,
-                event: "leave",
-                subjectUserId: actor.id,
-                actorUserId: actor.id
-            });
-    });
+    await leaveChannel(channelId, actor.id);
     return context.body(null, 204);
 });
 
@@ -353,28 +337,14 @@ api.patch("/channels/:channelId/favorite", async (context) => {
 api.post("/channels/:channelId/read", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
-    const latest = await db.query.messages.findFirst({
-        where: eq(messages.channelId, channelId),
-        orderBy: desc(messages.createdAt),
-        columns: { id: true }
-    });
-    await db
-        .update(channelMembers)
-        .set({
-            lastReadAt: new Date(),
-            lastReadMessageId: latest?.id ?? null,
-            updatedAt: new Date()
-        })
-        .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id)));
+    await markChannelRead(channelId, actor.id);
     return context.body(null, 204);
 });
 
 api.post("/channels/:channelId/typing", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
-    const membership = await db.query.channelMembers.findFirst({
-        where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, actor.id))
-    });
+    const membership = await getChannelMembership(channelId, actor.id);
     if (!membership) return context.body(null, 204);
     getBroker().publishEphemeral({
         type: "typing",
@@ -387,16 +357,12 @@ api.post("/channels/:channelId/typing", async (context) => {
 });
 
 api.get("/channels/:channelId/members", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await requireChannel(actor, channelId);
+    const { channelId } = await channelRequest(context, "channel:view");
     return context.json({ members: toChannelMembers(await listChannelMembers(channelId)) });
 });
 
 api.get("/channels/:channelId/addable-users", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await authorizeApiChannel(actor, channelId, "channel:manage_members");
+    const { channelId } = await channelRequest(context, "channel:manage_members");
     const memberIds = new Set((await listChannelMembers(channelId)).map((member) => member.userId));
     return context.json({
         users: (await listApprovedUsers()).filter((member) => !memberIds.has(member.id))
@@ -404,84 +370,32 @@ api.get("/channels/:channelId/addable-users", async (context) => {
 });
 
 api.post("/channels/:channelId/members", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await authorizeApiChannel(actor, channelId, "channel:manage_members");
+    const { actor, channelId } = await channelRequest(context, "channel:manage_members");
     const input = await body(
         context.req.raw,
         z.object({ userId: z.string().min(1), role: channelMemberRoleSchema.default("user") })
     );
-    const target = await db.query.user.findFirst({
-        where: eq(user.id, input.userId),
-        columns: { approvalStatus: true }
-    });
-    if (!target || target.approvalStatus !== "approved")
-        throw new ApiError(422, "User must be approved");
-    await db.transaction(async (tx) => {
-        const inserted = await tx
-            .insert(channelMembers)
-            .values({ channelId, userId: input.userId, role: input.role })
-            .onConflictDoNothing()
-            .returning({ id: channelMembers.id });
-        if (inserted.length)
-            await insertSystemMessage(tx, {
-                channelId,
-                event: "join",
-                subjectUserId: input.userId,
-                actorUserId: actor.id
-            });
-    });
+    await addChannelMember(channelId, input.userId, input.role, actor.id);
     return context.json({ added: true }, 201);
 });
 
 api.patch("/channels/:channelId/members/:userId", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await authorizeApiChannel(actor, channelId, "channel:manage_members");
+    const { channelId } = await channelRequest(context, "channel:manage_members");
     const userId = context.req.param("userId");
-    const target = await db.query.channelMembers.findFirst({
-        where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)),
-        columns: { role: true }
-    });
-    if (target?.role === "owner") throw new ApiError(409, "Cannot modify the channel owner");
     const { role } = await body(context.req.raw, z.object({ role: channelMemberRoleSchema }));
-    await db
-        .update(channelMembers)
-        .set({ role, updatedAt: new Date() })
-        .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)));
+    await updateChannelMemberRole(channelId, userId, role);
     return context.json({ role });
 });
 
 api.delete("/channels/:channelId/members/:userId", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await authorizeApiChannel(actor, channelId, "channel:manage_members");
+    const { actor, channelId } = await channelRequest(context, "channel:manage_members");
     const userId = context.req.param("userId");
-    const target = await db.query.channelMembers.findFirst({
-        where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)),
-        columns: { role: true }
-    });
-    if (target?.role === "owner") throw new ApiError(409, "Cannot modify the channel owner");
-    await db.transaction(async (tx) => {
-        const removed = await tx
-            .delete(channelMembers)
-            .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)))
-            .returning({ id: channelMembers.id });
-        if (removed.length)
-            await insertSystemMessage(tx, {
-                channelId,
-                event: "leave",
-                subjectUserId: userId,
-                actorUserId: actor.id
-            });
-    });
+    await removeChannelMember(channelId, userId, actor.id);
     return context.body(null, 204);
 });
 
 api.get("/channels/:channelId/messages", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await requireChannel(actor, channelId);
+    const { actor, channelId } = await channelRequest(context, "channel:view");
     const beforeId = context.req.query("beforeId");
     const beforeCreatedAt = context.req.query("beforeCreatedAt");
     const before =
@@ -495,9 +409,7 @@ api.get("/channels/:channelId/messages", async (context) => {
 });
 
 api.post("/channels/:channelId/messages", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await authorizeApiChannel(actor, channelId, "channel:post");
+    const { actor, channelId } = await channelRequest(context, "channel:post");
     const input = await body(context.req.raw, postMessageSchema.omit({ channelId: true }));
     const messageInput = { ...input, channelId };
     const content = sanitizeMessageHtml(messageInput.body.trim());
@@ -536,24 +448,20 @@ api.post("/channels/:channelId/messages", async (context) => {
         const createdMessage = created[0];
         if (!createdMessage) throw new ApiError(500, "Could not create message");
         if (messageInput.attachments.length)
-            await tx
-                .insert(attachments)
-                .values(
-                    messageInput.attachments.map((attachment) => ({
-                        ...attachment,
-                        messageId: createdMessage.id,
-                        uploaderId: actor.id
-                    }))
-                );
+            await tx.insert(attachments).values(
+                messageInput.attachments.map((attachment) => ({
+                    ...attachment,
+                    messageId: createdMessage.id,
+                    uploaderId: actor.id
+                }))
+            );
         if (mentioned.length)
-            await tx
-                .insert(mentions)
-                .values(
-                    mentioned.map((mentionedUserId) => ({
-                        messageId: createdMessage.id,
-                        mentionedUserId
-                    }))
-                );
+            await tx.insert(mentions).values(
+                mentioned.map((mentionedUserId) => ({
+                    messageId: createdMessage.id,
+                    mentionedUserId
+                }))
+            );
         return created;
     });
     if (!message) throw new ApiError(500, "Could not create message");
@@ -563,9 +471,7 @@ api.post("/channels/:channelId/messages", async (context) => {
 });
 
 api.get("/channels/:channelId/messages/:messageId/thread", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await requireChannel(actor, channelId);
+    const { actor, channelId } = await channelRequest(context, "channel:view");
     const messageId = id(context.req.param("messageId"), "message id");
     const root = await db.query.messages.findFirst({
         where: eq(messages.id, messageId),
@@ -578,9 +484,7 @@ api.get("/channels/:channelId/messages/:messageId/thread", async (context) => {
 });
 
 api.patch("/messages/:messageId", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const messageId = id(context.req.param("messageId"), "message id");
-    const message = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
+    const { actor, messageId, message } = await messageRequest(context);
     if (!message || message.deletedAt || message.type === "system")
         throw new ApiError(404, "Message not found");
     const { channel, membership } = await authorizeApiChannel(
@@ -617,9 +521,7 @@ api.patch("/messages/:messageId", async (context) => {
 });
 
 api.delete("/messages/:messageId", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const messageId = id(context.req.param("messageId"), "message id");
-    const message = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
+    const { actor, messageId, message } = await messageRequest(context);
     if (!message || message.deletedAt) return context.body(null, 204);
     if (message.type === "system") throw new ApiError(403, "System messages cannot be deleted");
     const { channel, membership } = await authorizeApiChannel(
@@ -676,9 +578,7 @@ api.delete("/messages/:messageId/reactions/:emoji", async (context) => {
 });
 
 api.get("/channels/:channelId/images", async (context) => {
-    const actor = await requireApiUser(context.req.raw.headers);
-    const channelId = id(context.req.param("channelId"), "channel id");
-    await requireChannel(actor, channelId);
+    const { channelId } = await channelRequest(context, "channel:view");
     const offset = asOffset(context.req.query("offset"));
     const images = await listChannelImages(channelId, { offset, limit: GALLERY_PAGE_SIZE + 1 });
     return context.json({
@@ -789,18 +689,16 @@ api.post("/admin/users", async (context) => {
     });
     if (existing) throw new ApiError(409, "A user with that email already exists");
     const userId = crypto.randomUUID();
-    await db
-        .insert(user)
-        .values({
-            id: userId,
-            name: input.name,
-            email: input.email,
-            emailVerified: true,
-            appRole: "user",
-            approvalStatus: "approved",
-            approvedAt: new Date(),
-            approvedByUserId: actor.id
-        });
+    await db.insert(user).values({
+        id: userId,
+        name: input.name,
+        email: input.email,
+        emailVerified: true,
+        appRole: "user",
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        approvedByUserId: actor.id
+    });
     try {
         await auth.api.signInMagicLink({
             body: { email: input.email, callbackURL: "/" },
@@ -869,19 +767,7 @@ api.patch("/admin/settings", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     if (!isAppStaff(actor)) throw new ApiError(403, "Not authorized");
     const input = await body(context.req.raw, appSettingsSchema);
-    const defaultChannelIds = [...new Set(input.defaultChannelIds)];
-    if (defaultChannelIds.length) {
-        const valid = await db.query.channels.findMany({
-            where: and(
-                inArray(channels.id, defaultChannelIds),
-                eq(channels.isPrivate, false),
-                eq(channels.isArchived, false)
-            ),
-            columns: { id: true }
-        });
-        if (valid.length !== defaultChannelIds.length)
-            throw new ApiError(422, "Default channels must be existing public channels");
-    }
+    const defaultChannelIds = await validateDefaultChannelIds(input.defaultChannelIds);
     await db
         .insert(appSettings)
         .values({ id: "app", name: input.name, iconUrl: input.iconUrl, defaultChannelIds })
