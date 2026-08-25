@@ -26,6 +26,7 @@
     "cloudinary": "^2.7.0",
     "drizzle-orm": "^0.44.6",
     "frimousse": "^0.3.0",
+    "hono": "^4.12.23",
     "ipaddr.js": "^1.9.1",
     "isomorphic-dompurify": "^3.16.0",
     "libphonenumber-js": "^1.13.6",
