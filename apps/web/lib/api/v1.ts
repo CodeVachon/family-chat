@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z, ZodError, type ZodType } from "zod";
@@ -16,13 +16,10 @@ import {
     messages,
     pushSubscriptions,
     user,
-    userPreferences,
-    verification
+    userPreferences
 } from "@workspace/db/schema";
 
 import { ApiError, authorizeApiChannel, requireApiUser, type ApiUser } from "@/lib/api/auth";
-import { auth } from "@/lib/auth";
-import { joinDefaultChannels } from "@/lib/channels/default-channels";
 import { isCloudinaryConfigured, isValidAttachmentUrl, signUpload } from "@/lib/cloudinary/server";
 import { ensureMessageLinkPreviews } from "@/lib/messaging/link-preview";
 import { insertSystemMessage } from "@/lib/messaging/system-messages";
@@ -54,6 +51,7 @@ import { getUserPreferences } from "@/lib/queries/preferences";
 import { getUserProfile } from "@/lib/queries/profile";
 import { listApprovedUsers } from "@/lib/queries/users";
 import { MESSAGE_RATE_LIMIT, rateLimit } from "@/lib/security/rate-limit";
+import { createInvitedUser, setUserApprovalStatus, setUserAppRole } from "@/lib/services/admin";
 import { validateDefaultChannelIds } from "@/lib/services/app-settings";
 import {
     addMemberToChannel,
@@ -102,15 +100,6 @@ const idSchema = z.string().uuid();
 // or fan out to subscribers. Mirrors app/api/typing/route.ts's window.
 const TYPING_RATE_LIMIT = { limit: 1, windowMs: 2500 } as const;
 
-/** Best-effort default-channel join: never let this fail the caller's response. */
-async function joinDefaultChannelsBestEffort(userId: string) {
-    try {
-        await joinDefaultChannels(userId);
-    } catch (err) {
-        console.error("[api] default-channel auto-join failed", err);
-    }
-}
-
 async function body<S extends ZodType>(request: Request, schema: S): Promise<z.output<S>> {
     let value: unknown;
     try {
@@ -131,6 +120,14 @@ function asOffset(value: string | undefined): number {
     const parsed = Number(value ?? "0");
     if (!Number.isInteger(parsed) || parsed < 0) throw new ApiError(400, "Invalid offset");
     return parsed;
+}
+
+function emojiParam(context: Context): string {
+    try {
+        return decodeURIComponent(context.req.param("emoji") ?? "");
+    } catch {
+        throw new ApiError(400, "Invalid emoji");
+    }
 }
 
 async function requireChannel(actor: ApiUser, channelId: string) {
@@ -382,9 +379,13 @@ api.get("/channels/:channelId/members", async (context) => {
 
 api.get("/channels/:channelId/addable-users", async (context) => {
     const { channelId } = await channelRequest(context, "channel:manage_members");
-    const memberIds = new Set((await listChannelMembers(channelId)).map((member) => member.userId));
+    const [members, approvedUsers] = await Promise.all([
+        listChannelMembers(channelId),
+        listApprovedUsers()
+    ]);
+    const memberIds = new Set(members.map((member) => member.userId));
     return context.json({
-        users: (await listApprovedUsers()).filter((member) => !memberIds.has(member.id))
+        users: approvedUsers.filter((member) => !memberIds.has(member.id))
     });
 });
 
@@ -570,7 +571,7 @@ api.delete("/messages/:messageId", async (context) => {
 api.put("/messages/:messageId/reactions/:emoji", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const messageId = id(context.req.param("messageId"), "message id");
-    const emoji = decodeURIComponent(context.req.param("emoji"));
+    const emoji = emojiParam(context);
     if (!(REACTION_EMOJIS as readonly string[]).includes(emoji))
         throw new ApiError(422, "Invalid reaction");
     const message = await db.query.messages.findFirst({
@@ -590,7 +591,7 @@ api.put("/messages/:messageId/reactions/:emoji", async (context) => {
 api.delete("/messages/:messageId/reactions/:emoji", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const messageId = id(context.req.param("messageId"), "message id");
-    const emoji = decodeURIComponent(context.req.param("emoji"));
+    const emoji = emojiParam(context);
     await db
         .delete(messageReactions)
         .where(
@@ -606,11 +607,14 @@ api.delete("/messages/:messageId/reactions/:emoji", async (context) => {
 api.get("/channels/:channelId/images", async (context) => {
     const { channelId } = await channelRequest(context, "channel:view");
     const offset = asOffset(context.req.query("offset"));
-    const images = await listChannelImages(channelId, { offset, limit: GALLERY_PAGE_SIZE + 1 });
+    const [images, total] = await Promise.all([
+        listChannelImages(channelId, { offset, limit: GALLERY_PAGE_SIZE + 1 }),
+        countChannelImages(channelId)
+    ]);
     return context.json({
         images: images.slice(0, GALLERY_PAGE_SIZE),
         hasMore: images.length > GALLERY_PAGE_SIZE,
-        total: await countChannelImages(channelId)
+        total
     });
 });
 
@@ -709,40 +713,7 @@ api.post("/admin/users", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     if (!canApp(actor, "user:approve")) throw new ApiError(403, "Not authorized");
     const input = await body(context.req.raw, inviteSchema);
-    const existing = await db.query.user.findFirst({
-        where: eq(user.email, input.email),
-        columns: { id: true }
-    });
-    if (existing) throw new ApiError(409, "A user with that email already exists");
-    const userId = crypto.randomUUID();
-    await db.insert(user).values({
-        id: userId,
-        name: input.name,
-        email: input.email,
-        emailVerified: true,
-        appRole: "user",
-        approvalStatus: "approved",
-        approvedAt: new Date(),
-        approvedByUserId: actor.id
-    });
-    try {
-        await auth.api.signInMagicLink({
-            body: { email: input.email, callbackURL: "/" },
-            headers: context.req.raw.headers
-        });
-    } catch (error) {
-        // Cleanup runs in its own try so a cleanup failure can't mask (replace)
-        // the original send error the caller needs to see.
-        try {
-            await db.delete(user).where(eq(user.id, userId));
-            const emailPattern = `%"email":"${input.email.replace(/[\\%_]/g, "\\$&")}"%`;
-            await db.delete(verification).where(sql`${verification.value} LIKE ${emailPattern}`);
-        } catch {
-            /* best-effort cleanup — surface the original send error below */
-        }
-        throw error;
-    }
-    void joinDefaultChannelsBestEffort(userId);
+    const userId = await createInvitedUser(input, actor.id, context.req.raw.headers);
     getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
     return context.json({ id: userId }, 201);
 });
@@ -761,10 +732,9 @@ api.patch("/admin/users/:userId", async (context) => {
     );
     const target = await db.query.user.findFirst({
         where: eq(user.id, targetId),
-        columns: { appRole: true }
+        columns: { id: true }
     });
     if (!target) throw new ApiError(404, "User not found");
-    if (target.appRole === "owner") throw new ApiError(403, "Cannot modify the application owner");
     if (
         input.approvalStatus &&
         !canApp(
@@ -780,17 +750,8 @@ api.patch("/admin/users/:userId", async (context) => {
         !canApp(actor, input.appRole === "admin" ? "user:promote_admin" : "user:demote")
     )
         throw new ApiError(403, "Not authorized");
-    const values = {
-        ...input,
-        ...(input.approvalStatus === "approved"
-            ? { approvedAt: new Date(), approvedByUserId: actor.id }
-            : input.approvalStatus === "pending"
-              ? { approvedAt: null, approvedByUserId: null }
-              : {}),
-        updatedAt: new Date()
-    };
-    await db.update(user).set(values).where(eq(user.id, targetId));
-    if (input.approvalStatus === "approved") void joinDefaultChannelsBestEffort(targetId);
+    if (input.approvalStatus) await setUserApprovalStatus(targetId, input.approvalStatus, actor.id);
+    if (input.appRole) await setUserAppRole(targetId, input.appRole);
     getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
     return context.json({ updated: true });
 });

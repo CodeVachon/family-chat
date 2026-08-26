@@ -43,7 +43,11 @@ export async function createRealtimeStream(request: Request, userId: string): Pr
             controller.enqueue(encodeRetry(3000));
             unsubscribe = broker.subscribe({ userId, channelIds, push });
             if (!unsubscribe) {
-                controller.close();
+                try {
+                    controller.close();
+                } catch {
+                    /* Stream has already closed. */
+                }
                 return;
             }
             push({ type: "ready", ts: Date.now() });

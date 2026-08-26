@@ -1,31 +1,13 @@
 "use server";
 
-import { eq, like } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { db } from "@workspace/db/client";
-import { user as userTable, verification } from "@workspace/db/schema";
-
-import { auth } from "@/lib/auth";
-import { joinDefaultChannels } from "@/lib/channels/default-channels";
 import { requireApprovedUser } from "@/lib/dal";
 import { canApp, type AppAction } from "@/lib/permissions";
 import { getBroker } from "@/lib/realtime/broker";
-
-/**
- * Auto-join the default channels, best-effort. The approval/invite has already
- * committed by the time this runs and the join is idempotent, so a failure here
- * must not fail the whole action (and re-approving safely retries).
- */
-async function joinDefaultChannelsBestEffort(userId: string) {
-    try {
-        await joinDefaultChannels(userId);
-    } catch (err) {
-        console.error("[admin] default-channel auto-join failed", err);
-    }
-}
+import { createInvitedUser, setUserApprovalStatus, setUserAppRole } from "@/lib/services/admin";
 
 function getUserId(formData: FormData): string {
     const id = formData.get("userId");
@@ -51,80 +33,35 @@ async function adminAction(
     getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
 }
 
-/** Reject if the target is the application owner (owner is untouchable here). */
-async function assertNotOwner(targetUserId: string) {
-    const target = await db.query.user.findFirst({
-        where: eq(userTable.id, targetUserId),
-        columns: { appRole: true }
-    });
-    if (target?.appRole === "owner") {
-        throw new Error("Cannot modify the application owner");
-    }
-}
-
 export async function approveUser(formData: FormData) {
-    await adminAction("user:approve", formData, async (targetUserId, actorId) => {
-        await db
-            .update(userTable)
-            .set({
-                approvalStatus: "approved",
-                approvedAt: new Date(),
-                approvedByUserId: actorId,
-                updatedAt: new Date()
-            })
-            .where(eq(userTable.id, targetUserId));
-
-        // Newly approved users auto-join the configured default channels. The
-        // membership inserts emit channels.changed, so the user's SSE fan-out
-        // scope is re-resolved without a manual reconnect.
-        await joinDefaultChannelsBestEffort(targetUserId);
-    });
+    await adminAction("user:approve", formData, (targetUserId, actorId) =>
+        setUserApprovalStatus(targetUserId, "approved", actorId)
+    );
 }
 
 export async function rejectUser(formData: FormData) {
-    await adminAction("user:reject", formData, async (targetUserId) => {
-        await assertNotOwner(targetUserId);
-        await db
-            .update(userTable)
-            .set({ approvalStatus: "rejected", updatedAt: new Date() })
-            .where(eq(userTable.id, targetUserId));
-    });
+    await adminAction("user:reject", formData, (targetUserId, actorId) =>
+        setUserApprovalStatus(targetUserId, "rejected", actorId)
+    );
 }
 
 export async function promoteToAdmin(formData: FormData) {
-    await adminAction("user:promote_admin", formData, async (targetUserId) => {
-        await assertNotOwner(targetUserId);
-        await db
-            .update(userTable)
-            .set({ appRole: "admin", updatedAt: new Date() })
-            .where(eq(userTable.id, targetUserId));
-    });
+    await adminAction("user:promote_admin", formData, (targetUserId) =>
+        setUserAppRole(targetUserId, "admin")
+    );
 }
 
 export async function demoteToUser(formData: FormData) {
-    await adminAction("user:demote", formData, async (targetUserId) => {
-        await assertNotOwner(targetUserId);
-        await db
-            .update(userTable)
-            .set({ appRole: "user", updatedAt: new Date() })
-            .where(eq(userTable.id, targetUserId));
-    });
+    await adminAction("user:demote", formData, (targetUserId) =>
+        setUserAppRole(targetUserId, "user")
+    );
 }
 
 /** Revoke a user's approval, sending them back to the pending state. */
 export async function unapproveUser(formData: FormData) {
-    await adminAction("user:reject", formData, async (targetUserId) => {
-        await assertNotOwner(targetUserId);
-        await db
-            .update(userTable)
-            .set({
-                approvalStatus: "pending",
-                approvedAt: null,
-                approvedByUserId: null,
-                updatedAt: new Date()
-            })
-            .where(eq(userTable.id, targetUserId));
-    });
+    await adminAction("user:reject", formData, (targetUserId, actorId) =>
+        setUserApprovalStatus(targetUserId, "pending", actorId)
+    );
 }
 
 const inviteSchema = z.object({
@@ -138,54 +75,7 @@ export async function inviteUser(input: unknown) {
     if (!canApp(actor, "user:approve")) throw new Error("Not authorized");
 
     const data = inviteSchema.parse(input);
-
-    const existing = await db.query.user.findFirst({
-        where: eq(userTable.email, data.email),
-        columns: { id: true }
-    });
-    if (existing) throw new Error("A user with that email already exists");
-
-    const userId = crypto.randomUUID();
-    await db.insert(userTable).values({
-        id: userId,
-        name: data.name,
-        email: data.email,
-        emailVerified: true,
-        appRole: "user",
-        approvalStatus: "approved",
-        approvedAt: new Date(),
-        approvedByUserId: actor.id
-    });
-
-    // Send the invite atomically with creation: if the email fails, roll back so
-    // we never leave an orphaned approved account the admin thinks was never
-    // created, nor a live magic-link token for it.
-    try {
-        await auth.api.signInMagicLink({
-            body: { email: data.email, callbackURL: "/" },
-            headers: await headers()
-        });
-    } catch (err) {
-        // Cleanup runs in its own try so a cleanup failure can't mask (replace)
-        // the original send error the admin needs to see.
-        try {
-            await db.delete(userTable).where(eq(userTable.id, userId));
-            // Better-Auth writes the magic-link token row *before* sending, keyed
-            // by a random token with the email embedded in its JSON `value`
-            // (`{"email":"..."}`). Match on that; anchored quotes avoid
-            // substring collisions and LIKE wildcards in the address are escaped
-            // (Postgres LIKE's default escape is backslash).
-            const emailPattern = `%"email":"${data.email.replace(/[\\%_]/g, "\\$&")}"%`;
-            await db.delete(verification).where(like(verification.value, emailPattern));
-        } catch {
-            /* best-effort cleanup — surface the original send error below */
-        }
-        throw err;
-    }
-
-    // Invited users are created already-approved, so they bypass approveUser —
-    // auto-join the default channels here too.
-    await joinDefaultChannelsBestEffort(userId);
+    await createInvitedUser(data, actor.id, await headers());
 
     revalidatePath("/admin/users");
     revalidatePath("/admin/approvals");
