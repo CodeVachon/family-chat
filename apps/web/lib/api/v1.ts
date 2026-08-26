@@ -53,6 +53,7 @@ import { getAppSettings } from "@/lib/queries/app-settings";
 import { getUserPreferences } from "@/lib/queries/preferences";
 import { getUserProfile } from "@/lib/queries/profile";
 import { listApprovedUsers } from "@/lib/queries/users";
+import { MESSAGE_RATE_LIMIT, rateLimit } from "@/lib/security/rate-limit";
 import { validateDefaultChannelIds } from "@/lib/services/app-settings";
 import {
     addMemberToChannel,
@@ -66,7 +67,6 @@ import {
 } from "@/lib/services/channel-members";
 import { memberIdsIn } from "@/lib/services/messages";
 import {
-    attachmentInputSchema,
     channelFormSchema,
     channelMemberRoleSchema,
     editMessageSchema,
@@ -96,6 +96,20 @@ const subscriptionSchema = z.object({
     auth: z.string().min(1)
 });
 const idSchema = z.string().uuid();
+
+// Slightly under the client's 3s throttle so legitimate clients are never
+// falsely limited, but a tight POST loop is rejected before it can hit the DB
+// or fan out to subscribers. Mirrors app/api/typing/route.ts's window.
+const TYPING_RATE_LIMIT = { limit: 1, windowMs: 2500 } as const;
+
+/** Best-effort default-channel join: never let this fail the caller's response. */
+async function joinDefaultChannelsBestEffort(userId: string) {
+    try {
+        await joinDefaultChannels(userId);
+    } catch (err) {
+        console.error("[api] default-channel auto-join failed", err);
+    }
+}
 
 async function body<S extends ZodType>(request: Request, schema: S): Promise<z.output<S>> {
     let value: unknown;
@@ -344,6 +358,11 @@ api.post("/channels/:channelId/read", async (context) => {
 api.post("/channels/:channelId/typing", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
+    // Throttle before the membership lookup so a flood costs nothing server-side
+    // (mirrors app/api/typing/route.ts's per-user-per-channel window).
+    if (!rateLimit(`typing:${actor.id}:${channelId}`, TYPING_RATE_LIMIT).allowed) {
+        return context.body(null, 204);
+    }
     const membership = await getChannelMembership(channelId, actor.id);
     if (!membership) return context.body(null, 204);
     getBroker().publishEphemeral({
@@ -410,13 +429,22 @@ api.get("/channels/:channelId/messages", async (context) => {
 
 api.post("/channels/:channelId/messages", async (context) => {
     const { actor, channelId } = await channelRequest(context, "channel:post");
+    // Checked before any of the work below, because a single post fans out over
+    // SSE, sends web push to every 'all'-level member plus everyone mentioned,
+    // and triggers an outbound fetch per URL in the body. No human reaches this.
+    const budget = rateLimit(`message:${actor.id}`, MESSAGE_RATE_LIMIT);
+    if (!budget.allowed) {
+        throw new ApiError(
+            429,
+            `Too many messages — wait ${Math.ceil(budget.retryAfterMs / 1000)}s and try again.`
+        );
+    }
     const input = await body(context.req.raw, postMessageSchema.omit({ channelId: true }));
     const messageInput = { ...input, channelId };
     const content = sanitizeMessageHtml(messageInput.body.trim());
     if (!htmlToText(content).length && !messageInput.attachments.length)
         throw new ApiError(422, "Message cannot be empty");
     for (const attachment of messageInput.attachments) {
-        attachmentInputSchema.parse(attachment);
         if (!isValidAttachmentUrl(attachment.secureUrl, attachment.publicId)) {
             throw new ApiError(422, "Invalid attachment");
         }
@@ -429,11 +457,10 @@ api.post("/channels/:channelId/messages", async (context) => {
         if (!root || root.channelId !== channelId || root.threadRootId)
             throw new ApiError(422, "Invalid thread");
     }
+    const inBody = new Set(extractMentionIdsFromHtml(content));
     const mentioned = await memberIdsIn(
         channelId,
-        messageInput.mentionUserIds.filter((userId) =>
-            new Set(extractMentionIdsFromHtml(content)).has(userId)
-        )
+        messageInput.mentionUserIds.filter((userId) => inBody.has(userId))
     );
     const [message] = await db.transaction(async (tx) => {
         const created = await tx
@@ -499,11 +526,10 @@ api.patch("/messages/:messageId", async (context) => {
         throw new ApiError(403, "Not authorized");
     const input = await body(context.req.raw, editMessageSchema.omit({ messageId: true }));
     const content = sanitizeMessageHtml(input.body.trim());
+    const inBody = new Set(extractMentionIdsFromHtml(content));
     const mentioned = await memberIdsIn(
         message.channelId,
-        input.mentionUserIds.filter((userId) =>
-            new Set(extractMentionIdsFromHtml(content)).has(userId)
-        )
+        input.mentionUserIds.filter((userId) => inBody.has(userId))
     );
     await db.transaction(async (tx) => {
         await tx
@@ -705,12 +731,18 @@ api.post("/admin/users", async (context) => {
             headers: context.req.raw.headers
         });
     } catch (error) {
-        await db.delete(user).where(eq(user.id, userId));
-        const emailPattern = `%"email":"${input.email.replace(/[\\%_]/g, "\\$&")}"%`;
-        await db.delete(verification).where(sql`${verification.value} LIKE ${emailPattern}`);
+        // Cleanup runs in its own try so a cleanup failure can't mask (replace)
+        // the original send error the caller needs to see.
+        try {
+            await db.delete(user).where(eq(user.id, userId));
+            const emailPattern = `%"email":"${input.email.replace(/[\\%_]/g, "\\$&")}"%`;
+            await db.delete(verification).where(sql`${verification.value} LIKE ${emailPattern}`);
+        } catch {
+            /* best-effort cleanup — surface the original send error below */
+        }
         throw error;
     }
-    void joinDefaultChannels(userId);
+    void joinDefaultChannelsBestEffort(userId);
     getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
     return context.json({ id: userId }, 201);
 });
@@ -758,7 +790,7 @@ api.patch("/admin/users/:userId", async (context) => {
         updatedAt: new Date()
     };
     await db.update(user).set(values).where(eq(user.id, targetId));
-    if (input.approvalStatus === "approved") void joinDefaultChannels(targetId);
+    if (input.approvalStatus === "approved") void joinDefaultChannelsBestEffort(targetId);
     getBroker().publishEphemeral({ type: "users.changed", ts: Date.now() });
     return context.json({ updated: true });
 });
