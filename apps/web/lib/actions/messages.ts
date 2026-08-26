@@ -17,11 +17,29 @@ import {
 import { canInChannel } from "@/lib/permissions";
 import { pushForNewMessage } from "@/lib/push/notify";
 import { memberIdsIn } from "@/lib/services/messages";
+import { MESSAGE_RATE_LIMIT, rateLimit } from "@/lib/security/rate-limit";
 import { editMessageSchema, postMessageSchema } from "@/lib/validation/channel";
 
 export async function postMessage(input: unknown) {
     const data = postMessageSchema.parse(input);
     const { user } = await authorizeChannel(data.channelId, "channel:post");
+
+    // Checked after authorization (so the key is a real user id) but before any
+    // of the work below, because a single post fans out over SSE, sends web push
+    // to every 'all'-level member plus everyone mentioned, and triggers an
+    // outbound fetch per URL in the body. No human reaches this limit.
+    const budget = rateLimit(`message:${user.id}`, MESSAGE_RATE_LIMIT);
+    if (!budget.allowed) {
+        // Thrown rather than returned: this action's contract is throw-based (see
+        // COD-68, which tracks migrating it to ActionResult). The composer rolls
+        // back its optimistic row and restores the draft on a rejection, so the
+        // user loses nothing — though Next redacts the message in production, so
+        // they see a generic failure. Once this action returns ActionResult, this
+        // should become a returned error so the real text reaches them.
+        throw new Error(
+            `Too many messages — wait ${Math.ceil(budget.retryAfterMs / 1000)}s and try again.`
+        );
+    }
 
     // Sanitize the rich-text HTML before it ever touches the DB.
     const body = sanitizeMessageHtml(data.body.trim());

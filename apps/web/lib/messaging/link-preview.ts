@@ -6,12 +6,12 @@ import ogs from "open-graph-scraper";
 import { db } from "@workspace/db/client";
 import { linkPreviews, messages } from "@workspace/db/schema";
 
-import { isSafeUrl, ssrfSafeDispatcher } from "@/lib/security/ssrf";
+import { fetchHtmlCapped, isSafeUrl } from "@/lib/security/ssrf";
 import { extractUrls } from "./links";
 
 const OK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const FAIL_TTL_MS = 24 * 60 * 60 * 1000;
-const FETCH_TIMEOUT_SECONDS = 5;
+const FETCH_TIMEOUT_MS = 5000;
 
 type PreviewData = {
     title: string | null;
@@ -74,13 +74,15 @@ function pickPreviewImage(candidates: OgImage[], base: string): string | null {
 async function fetchPreview(url: string): Promise<PreviewData | null> {
     if (!(await isSafeUrl(url))) return null;
     try {
-        // ogs `timeout` is in seconds. Route the fetch through the SSRF-safe
-        // dispatcher so every connection (incl. redirects) re-validates the IP.
-        const { error, result } = await ogs({
-            url,
-            timeout: FETCH_TIMEOUT_SECONDS,
-            fetchOptions: { dispatcher: ssrfSafeDispatcher }
-        });
+        // Fetch ourselves rather than letting ogs do it, so the response is bounded
+        // (byte cap + content-type gate) as well as SSRF-checked — see
+        // `fetchHtmlCapped`. ogs is then given the HTML via its `html` option and
+        // only parses. Relative image/favicon URLs are resolved app-side against
+        // `url` below, which is what ogs's own `url` handling would have provided.
+        const html = await fetchHtmlCapped(url, FETCH_TIMEOUT_MS);
+        if (html === null) return null;
+
+        const { error, result } = await ogs({ html });
         if (error || !result.success) return null;
         return {
             title: result.ogTitle ?? result.twitterTitle ?? null,

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { channelRole } from "./enums";
@@ -48,6 +48,11 @@ export const channelMembers = pgTable(
     (table) => [
         // One membership per user per channel.
         uniqueIndex("channel_members_channel_user_unique").on(table.channelId, table.userId),
+        // "All of this user's memberships" — the unique index above leads with
+        // channel_id, and Postgres can't seek a composite index by its second
+        // column, so userId-only filters need their own. Used by
+        // countUnreadForUser (run on every push) and resolveLastActiveChannelId.
+        index("channel_members_user_idx").on(table.userId),
         // Exactly one Owner per channel (partial unique index).
         uniqueIndex("one_channel_owner")
             .on(table.channelId)
