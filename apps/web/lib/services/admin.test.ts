@@ -19,10 +19,12 @@ describe("setUserApprovalStatus", () => {
     it("throws 403 when rejecting the application owner", async () => {
         db.query.user.findFirst.mockResolvedValueOnce({ appRole: "owner" });
 
-        await expect(setUserApprovalStatus("owner-1", "rejected", "actor-1")).rejects.toMatchObject({
-            message: "Cannot modify the application owner",
-            status: 403
-        });
+        await expect(setUserApprovalStatus("owner-1", "rejected", "actor-1")).rejects.toMatchObject(
+            {
+                message: "Cannot modify the application owner",
+                status: 403
+            }
+        );
         expect(db.update).not.toHaveBeenCalled();
     });
 
@@ -85,7 +87,11 @@ describe("createInvitedUser", () => {
         const insertChain = chain([]);
         db.insert.mockReturnValueOnce(insertChain);
 
-        const userId = await createInvitedUser({ name: "Jo", email: "jo@example.com" }, "actor-1", headers);
+        const userId = await createInvitedUser(
+            { name: "Jo", email: "jo@example.com" },
+            "actor-1",
+            headers
+        );
 
         expect(userId).toMatch(UUID_RE);
         expect(insertChain.values).toHaveBeenCalledWith(

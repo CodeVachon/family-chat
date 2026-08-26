@@ -3,7 +3,13 @@ import { mock } from "bun:test";
 import { chain } from "./chain";
 
 type QueryTable = "channelMembers" | "channels" | "user" | "messages" | "appSettings";
-const QUERY_TABLES: QueryTable[] = ["channelMembers", "channels", "user", "messages", "appSettings"];
+const QUERY_TABLES: QueryTable[] = [
+    "channelMembers",
+    "channels",
+    "user",
+    "messages",
+    "appSettings"
+];
 
 function makeQueryTable() {
     return {

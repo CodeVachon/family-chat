@@ -71,7 +71,12 @@ describe("joinPublicChannel", () => {
         expect(insertSystemMessage).toHaveBeenCalledTimes(1);
         expect(insertSystemMessage).toHaveBeenCalledWith(
             db,
-            expect.objectContaining({ channelId: "c1", event: "join", subjectUserId: "u1", actorUserId: "u1" })
+            expect.objectContaining({
+                channelId: "c1",
+                event: "join",
+                subjectUserId: "u1",
+                actorUserId: "u1"
+            })
         );
     });
 
@@ -105,7 +110,12 @@ describe("leaveChannelMembership", () => {
         expect(db.delete).toHaveBeenCalledTimes(1);
         expect(insertSystemMessage).toHaveBeenCalledWith(
             db,
-            expect.objectContaining({ channelId: "c1", event: "leave", subjectUserId: "u1", actorUserId: "u1" })
+            expect.objectContaining({
+                channelId: "c1",
+                event: "leave",
+                subjectUserId: "u1",
+                actorUserId: "u1"
+            })
         );
     });
 
@@ -145,7 +155,12 @@ describe("addMemberToChannel", () => {
 
         expect(insertSystemMessage).toHaveBeenCalledWith(
             db,
-            expect.objectContaining({ channelId: "c1", event: "join", subjectUserId: "u1", actorUserId: "actor-1" })
+            expect.objectContaining({
+                channelId: "c1",
+                event: "join",
+                subjectUserId: "u1",
+                actorUserId: "actor-1"
+            })
         );
     });
 });
@@ -188,7 +203,12 @@ describe("removeMemberFromChannel", () => {
 
         expect(insertSystemMessage).toHaveBeenCalledWith(
             db,
-            expect.objectContaining({ channelId: "c1", event: "leave", subjectUserId: "u1", actorUserId: "actor-1" })
+            expect.objectContaining({
+                channelId: "c1",
+                event: "leave",
+                subjectUserId: "u1",
+                actorUserId: "actor-1"
+            })
         );
     });
 });
