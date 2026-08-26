@@ -6,7 +6,7 @@ import * as schema from "@workspace/db/schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { magicLink } from "better-auth/plugins";
+import { bearer, magicLink } from "better-auth/plugins";
 import { count, eq } from "drizzle-orm";
 
 import { bootstrapFirstRun } from "./channels/default-channels";
@@ -155,6 +155,10 @@ export const auth = betterAuth({
     },
 
     plugins: [
+        // Lets native clients authenticate API requests with
+        // `Authorization: Bearer <token>` while browser clients keep using the
+        // existing secure session cookie.
+        bearer(),
         magicLink({
             // Signup flows through /signup + admin approval, so magic links must
             // only authenticate existing accounts. Without this, anyone could make

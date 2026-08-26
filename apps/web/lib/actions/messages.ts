@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@workspace/db/client";
-import { attachments, channelMembers, mentions, messages } from "@workspace/db/schema";
+import { attachments, mentions, messages } from "@workspace/db/schema";
 
 import { isValidAttachmentUrl } from "@/lib/cloudinary/server";
 import { authorizeChannel } from "@/lib/dal";
@@ -16,21 +16,9 @@ import {
 } from "@/lib/messaging/rich-text";
 import { canInChannel } from "@/lib/permissions";
 import { pushForNewMessage } from "@/lib/push/notify";
+import { memberIdsIn } from "@/lib/services/messages";
 import { MESSAGE_RATE_LIMIT, rateLimit } from "@/lib/security/rate-limit";
 import { editMessageSchema, postMessageSchema } from "@/lib/validation/channel";
-
-/** Filter the given user ids to those that are members of the channel. */
-async function memberIdsIn(channelId: string, userIds: string[]): Promise<string[]> {
-    const unique = [...new Set(userIds)].filter(Boolean);
-    if (unique.length === 0) return [];
-    const rows = await db
-        .select({ userId: channelMembers.userId })
-        .from(channelMembers)
-        .where(
-            and(eq(channelMembers.channelId, channelId), inArray(channelMembers.userId, unique))
-        );
-    return rows.map((r) => r.userId);
-}
 
 export async function postMessage(input: unknown) {
     const data = postMessageSchema.parse(input);
