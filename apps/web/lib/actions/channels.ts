@@ -10,7 +10,7 @@ import { channelMembers, channels } from "@workspace/db/schema";
 import { authorizeChannel, requireApprovedUser } from "@/lib/dal";
 import { insertSystemMessage } from "@/lib/messaging/system-messages";
 import { canApp } from "@/lib/permissions";
-import { joinPublicChannel, leaveChannelMembership } from "@/lib/services/channel-members";
+import { joinPublicChannel } from "@/lib/services/channel-members";
 import { channelFormSchema } from "@/lib/validation/channel";
 
 function parseChannelForm(formData: FormData) {
@@ -126,31 +126,11 @@ export async function setChannelArchived(formData: FormData) {
     revalidatePath(`/channels/${channelId}`);
 }
 
-export async function deleteChannel(formData: FormData) {
-    const channelId = requireChannelId(formData);
-    await authorizeChannel(channelId, "channel:delete");
-
-    await db.delete(channels).where(eq(channels.id, channelId));
-
-    revalidatePath("/channels");
-    redirect("/channels");
-}
-
 export async function joinChannel(formData: FormData) {
     const actor = await requireApprovedUser();
     const channelId = requireChannelId(formData);
 
     await joinPublicChannel(channelId, actor.id);
-
-    revalidatePath("/channels");
-    revalidatePath(`/channels/${channelId}`);
-}
-
-export async function leaveChannel(formData: FormData) {
-    const actor = await requireApprovedUser();
-    const channelId = requireChannelId(formData);
-
-    await leaveChannelMembership(channelId, actor.id);
 
     revalidatePath("/channels");
     revalidatePath(`/channels/${channelId}`);
