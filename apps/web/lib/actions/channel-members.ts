@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { authorizeChannel } from "@/lib/dal";
 import {
-    addChannelMember as addMember,
-    removeChannelMember as removeMember,
+    addMemberToChannel,
+    removeMemberFromChannel,
     updateChannelMemberRole
 } from "@/lib/services/channel-members";
 import { channelMemberRoleSchema } from "@/lib/validation/channel";
@@ -23,7 +23,7 @@ export async function addChannelMember(formData: FormData) {
     const userId = requireField(formData, "userId");
     const role = channelMemberRoleSchema.parse(formData.get("role") ?? "user");
 
-    await addMember(channelId, userId, role, actor.id);
+    await addMemberToChannel(channelId, userId, role, actor.id);
 
     revalidatePath(`/channels/${channelId}`);
 }
@@ -45,7 +45,7 @@ export async function removeChannelMember(formData: FormData) {
     const { user: actor } = await authorizeChannel(channelId, "channel:manage_members");
 
     const userId = requireField(formData, "userId");
-    await removeMember(channelId, userId, actor.id);
+    await removeMemberFromChannel(channelId, userId, actor.id);
 
     revalidatePath(`/channels/${channelId}`);
 }

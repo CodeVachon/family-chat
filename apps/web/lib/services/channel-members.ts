@@ -53,7 +53,7 @@ export async function joinPublicChannel(channelId: string, userId: string) {
     });
 }
 
-export async function leaveChannel(channelId: string, userId: string) {
+export async function leaveChannelMembership(channelId: string, userId: string) {
     const membership = await getChannelMembership(channelId, userId);
     if (membership?.role === "owner") {
         throw new ServiceError(
@@ -82,7 +82,7 @@ async function removeMembership(channelId: string, userId: string, actorUserId: 
     });
 }
 
-export async function addChannelMember(
+export async function addMemberToChannel(
     channelId: string,
     targetUserId: string,
     role: Exclude<ChannelRole, "owner">,
@@ -125,12 +125,16 @@ export async function updateChannelMemberRole(
         .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)));
 }
 
-export async function removeChannelMember(channelId: string, userId: string, actorUserId: string) {
+export async function removeMemberFromChannel(
+    channelId: string,
+    userId: string,
+    actorUserId: string
+) {
     await assertTargetNotOwner(channelId, userId);
     await removeMembership(channelId, userId, actorUserId);
 }
 
-export async function markChannelRead(channelId: string, userId: string) {
+export async function recordChannelRead(channelId: string, userId: string) {
     const latest = await db.query.messages.findFirst({
         where: eq(messages.channelId, channelId),
         orderBy: desc(messages.createdAt),

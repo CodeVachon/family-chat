@@ -10,7 +10,7 @@ import { channelMembers, channels } from "@workspace/db/schema";
 import { authorizeChannel, requireApprovedUser } from "@/lib/dal";
 import { insertSystemMessage } from "@/lib/messaging/system-messages";
 import { canApp } from "@/lib/permissions";
-import { joinPublicChannel, leaveChannel as leaveMembership } from "@/lib/services/channel-members";
+import { joinPublicChannel, leaveChannelMembership } from "@/lib/services/channel-members";
 import { channelFormSchema } from "@/lib/validation/channel";
 
 function parseChannelForm(formData: FormData) {
@@ -150,7 +150,7 @@ export async function leaveChannel(formData: FormData) {
     const actor = await requireApprovedUser();
     const channelId = requireChannelId(formData);
 
-    await leaveMembership(channelId, actor.id);
+    await leaveChannelMembership(channelId, actor.id);
 
     revalidatePath("/channels");
     revalidatePath(`/channels/${channelId}`);

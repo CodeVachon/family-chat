@@ -55,12 +55,12 @@ import { getUserProfile } from "@/lib/queries/profile";
 import { listApprovedUsers } from "@/lib/queries/users";
 import { validateDefaultChannelIds } from "@/lib/services/app-settings";
 import {
-    addChannelMember,
+    addMemberToChannel,
     getChannelMembership,
     joinPublicChannel,
-    leaveChannel,
-    markChannelRead,
-    removeChannelMember,
+    leaveChannelMembership,
+    recordChannelRead,
+    removeMemberFromChannel,
     ServiceError,
     updateChannelMemberRole
 } from "@/lib/services/channel-members";
@@ -319,7 +319,7 @@ api.post("/channels/:channelId/join", async (context) => {
 api.post("/channels/:channelId/leave", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
-    await leaveChannel(channelId, actor.id);
+    await leaveChannelMembership(channelId, actor.id);
     return context.body(null, 204);
 });
 
@@ -337,7 +337,7 @@ api.patch("/channels/:channelId/favorite", async (context) => {
 api.post("/channels/:channelId/read", async (context) => {
     const actor = await requireApiUser(context.req.raw.headers);
     const channelId = id(context.req.param("channelId"), "channel id");
-    await markChannelRead(channelId, actor.id);
+    await recordChannelRead(channelId, actor.id);
     return context.body(null, 204);
 });
 
@@ -375,7 +375,7 @@ api.post("/channels/:channelId/members", async (context) => {
         context.req.raw,
         z.object({ userId: z.string().min(1), role: channelMemberRoleSchema.default("user") })
     );
-    await addChannelMember(channelId, input.userId, input.role, actor.id);
+    await addMemberToChannel(channelId, input.userId, input.role, actor.id);
     return context.json({ added: true }, 201);
 });
 
@@ -390,7 +390,7 @@ api.patch("/channels/:channelId/members/:userId", async (context) => {
 api.delete("/channels/:channelId/members/:userId", async (context) => {
     const { actor, channelId } = await channelRequest(context, "channel:manage_members");
     const userId = context.req.param("userId");
-    await removeChannelMember(channelId, userId, actor.id);
+    await removeMemberFromChannel(channelId, userId, actor.id);
     return context.body(null, 204);
 });
 
@@ -784,5 +784,4 @@ api.patch("/admin/settings", async (context) => {
     return context.json(await getAppSettings());
 });
 
-export type ApiV1 = typeof api;
 export { api };

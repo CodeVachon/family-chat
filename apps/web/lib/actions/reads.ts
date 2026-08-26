@@ -1,7 +1,7 @@
 "use server";
 
 import { requireApprovedUser } from "@/lib/dal";
-import { markChannelRead as markRead } from "@/lib/services/channel-members";
+import { recordChannelRead } from "@/lib/services/channel-members";
 
 /**
  * Mark a channel as read up to its latest message for the current user.
@@ -11,5 +11,5 @@ import { markChannelRead as markRead } from "@/lib/services/channel-members";
 export async function markChannelRead(channelId: string) {
     const user = await requireApprovedUser();
 
-    await markRead(channelId, user.id);
+    await recordChannelRead(channelId, user.id);
 }
