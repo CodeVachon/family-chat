@@ -10,8 +10,12 @@ const CHAIN_METHODS = [
     "onConflictDoUpdate",
     "orderBy",
     "limit",
+    "offset",
     "groupBy",
-    "having"
+    "having",
+    "leftJoin",
+    "innerJoin",
+    "rightJoin"
 ] as const;
 
 type Chain = Promise<unknown> & Record<(typeof CHAIN_METHODS)[number], ReturnType<typeof mock>>;
