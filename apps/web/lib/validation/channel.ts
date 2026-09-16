@@ -61,19 +61,25 @@ export const attachmentInputSchema = z.object({
 
 export type AttachmentInput = z.infer<typeof attachmentInputSchema>;
 
-export const postMessageSchema = z
-    .object({
-        channelId: z.string().uuid(),
-        threadRootId: z.string().uuid().nullable().default(null),
-        // HTML body (rich text) — larger ceiling than the visible-text limit.
-        body: z.string().max(20000),
-        attachments: z.array(attachmentInputSchema).max(10).default([]),
-        mentionUserIds: z.array(z.string()).max(20).default([])
-    })
-    .refine((d) => d.body.trim().length > 0 || d.attachments.length > 0, {
-        message: "Message cannot be empty",
-        path: ["body"]
-    });
+export const postMessageObjectSchema = z.object({
+    channelId: z.string().uuid(),
+    threadRootId: z.string().uuid().nullable().default(null),
+    // HTML body (rich text) — larger ceiling than the visible-text limit.
+    body: z.string().max(20000),
+    attachments: z.array(attachmentInputSchema).max(10).default([]),
+    mentionUserIds: z.array(z.string()).max(20).default([])
+});
+
+// Kept separate from postMessageObjectSchema so callers (e.g. the v1 API,
+// which omits channelId) can re-attach it — Zod v4 forbids .omit() on a
+// schema that already has a .refine().
+export const postMessageNotEmpty = (d: { body: string; attachments: unknown[] }) =>
+    d.body.trim().length > 0 || d.attachments.length > 0;
+
+export const postMessageSchema = postMessageObjectSchema.refine(postMessageNotEmpty, {
+    message: "Message cannot be empty",
+    path: ["body"]
+});
 
 export const editMessageSchema = z.object({
     messageId: z.string().uuid(),

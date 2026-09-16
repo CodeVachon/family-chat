@@ -68,7 +68,8 @@ import {
     channelFormSchema,
     channelMemberRoleSchema,
     editMessageSchema,
-    postMessageSchema,
+    postMessageNotEmpty,
+    postMessageObjectSchema,
     REACTION_EMOJIS
 } from "@/lib/validation/channel";
 import {
@@ -440,7 +441,13 @@ api.post("/channels/:channelId/messages", async (context) => {
             `Too many messages — wait ${Math.ceil(budget.retryAfterMs / 1000)}s and try again.`
         );
     }
-    const input = await body(context.req.raw, postMessageSchema.omit({ channelId: true }));
+    const input = await body(
+        context.req.raw,
+        postMessageObjectSchema.omit({ channelId: true }).refine(postMessageNotEmpty, {
+            message: "Message cannot be empty",
+            path: ["body"]
+        })
+    );
     const messageInput = { ...input, channelId };
     const content = sanitizeMessageHtml(messageInput.body.trim());
     if (!htmlToText(content).length && !messageInput.attachments.length)
