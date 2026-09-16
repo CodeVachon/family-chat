@@ -2,13 +2,22 @@ import { mock } from "bun:test";
 
 import { chain } from "./chain";
 
-type QueryTable = "channelMembers" | "channels" | "user" | "messages" | "appSettings";
+type QueryTable =
+    | "channelMembers"
+    | "channels"
+    | "user"
+    | "messages"
+    | "appSettings"
+    | "userPreferences"
+    | "linkPreviews";
 const QUERY_TABLES: QueryTable[] = [
     "channelMembers",
     "channels",
     "user",
     "messages",
-    "appSettings"
+    "appSettings",
+    "userPreferences",
+    "linkPreviews"
 ];
 
 function makeQueryTable() {
@@ -34,6 +43,9 @@ export const db = {
     update: mock(() => chain(undefined)),
     delete: mock(() => chain([])),
     select: mock(() => chain([])),
+    // Raw `db.execute(sql\`...\`)` escape hatch (e.g. listChannelActivity's
+    // windowed-query) — resolves to a plain row array, not a chain.
+    execute: mock(async () => [] as unknown[]),
     transaction: mock(async (cb: (tx: typeof db) => unknown) => cb(db))
 };
 
@@ -48,5 +60,6 @@ export function resetDb() {
     db.update.mockReset().mockImplementation(() => chain(undefined));
     db.delete.mockReset().mockImplementation(() => chain([]));
     db.select.mockReset().mockImplementation(() => chain([]));
+    db.execute.mockReset().mockImplementation(async () => []);
     db.transaction.mockReset().mockImplementation(async (cb: (tx: typeof db) => unknown) => cb(db));
 }
