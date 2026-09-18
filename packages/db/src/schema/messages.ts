@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
     type AnyPgColumn,
     index,
@@ -5,6 +6,7 @@ import {
     pgTable,
     text,
     timestamp,
+    uniqueIndex,
     uuid
 } from "drizzle-orm/pg-core";
 
@@ -59,12 +61,26 @@ export const messages = pgTable(
         editedAt: timestamp("edited_at", { withTimezone: true }),
         // Soft delete: deletedAt set renders a tombstone, body preserved for audit.
         deletedAt: timestamp("deleted_at", { withTimezone: true }),
+        // Client-generated idempotency key for POST /api/v1/channels/:id/messages
+        // (a native client's own UUID for the compose attempt, not a server id).
+        // Null for messages sent through the web app's server action, which has
+        // no ambiguous-network-failure retry problem to solve. Never expires —
+        // it stays valid for the lifetime of the message row, including after a
+        // soft delete, so a retried send after a dropped response always
+        // resolves to the one row that attempt already produced.
+        clientMessageId: text("client_message_id"),
         createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
         updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     },
     (table) => [
         index("messages_channel_created_idx").on(table.channelId, table.createdAt),
-        index("messages_thread_idx").on(table.threadRootId, table.createdAt)
+        index("messages_thread_idx").on(table.threadRootId, table.createdAt),
+        // Scoped per author, not globally: two different users independently
+        // generating the same client id is a coincidence they should each be
+        // free of, not a conflict between them.
+        uniqueIndex("messages_author_client_id_unique")
+            .on(table.authorUserId, table.clientMessageId)
+            .where(sql`${table.clientMessageId} IS NOT NULL`)
     ]
 );
 

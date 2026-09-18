@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z, ZodError, type ZodType } from "zod";
@@ -449,6 +449,31 @@ api.post("/channels/:channelId/messages", async (context) => {
         })
     );
     const messageInput = { ...input, channelId };
+
+    // Idempotent replay: a client retrying an ambiguously-completed send (its
+    // first response was lost, but the request landed) sends the same
+    // clientMessageId again. Return the original result rather than posting a
+    // duplicate — keyed by (author, clientMessageId), not by request body, so
+    // this doesn't compare content. A clientMessageId reused for a different
+    // channel is almost certainly a client bug, not a legitimate replay.
+    if (messageInput.clientMessageId) {
+        const existing = await db.query.messages.findFirst({
+            where: and(
+                eq(messages.authorUserId, actor.id),
+                eq(messages.clientMessageId, messageInput.clientMessageId)
+            )
+        });
+        if (existing) {
+            if (existing.channelId !== channelId) {
+                throw new ApiError(
+                    409,
+                    "clientMessageId was already used for a message in a different channel"
+                );
+            }
+            return context.json({ message: existing }, 201);
+        }
+    }
+
     const content = sanitizeMessageHtml(messageInput.body.trim());
     if (!htmlToText(content).length && !messageInput.attachments.length)
         throw new ApiError(422, "Message cannot be empty");
@@ -470,18 +495,36 @@ api.post("/channels/:channelId/messages", async (context) => {
         channelId,
         messageInput.mentionUserIds.filter((userId) => inBody.has(userId))
     );
-    const [message] = await db.transaction(async (tx) => {
+    const [message, isReplay] = await db.transaction(async (tx) => {
         const created = await tx
             .insert(messages)
             .values({
                 channelId,
                 authorUserId: actor.id,
                 threadRootId: messageInput.threadRootId,
-                body: content
+                body: content,
+                clientMessageId: messageInput.clientMessageId ?? null
+            })
+            // Closes the race the check above can't: two concurrent requests
+            // with the same clientMessageId can both pass that check before
+            // either commits. Only the partial index (non-null keys) can
+            // conflict, so this is a no-op whenever clientMessageId is null.
+            .onConflictDoNothing({
+                target: [messages.authorUserId, messages.clientMessageId],
+                where: isNotNull(messages.clientMessageId)
             })
             .returning();
         const createdMessage = created[0];
-        if (!createdMessage) throw new ApiError(500, "Could not create message");
+        if (!createdMessage) {
+            const winner = await tx.query.messages.findFirst({
+                where: and(
+                    eq(messages.authorUserId, actor.id),
+                    eq(messages.clientMessageId, messageInput.clientMessageId!)
+                )
+            });
+            if (!winner) throw new ApiError(500, "Could not create message");
+            return [winner, true] as const;
+        }
         if (messageInput.attachments.length)
             await tx.insert(attachments).values(
                 messageInput.attachments.map((attachment) => ({
@@ -497,11 +540,13 @@ api.post("/channels/:channelId/messages", async (context) => {
                     mentionedUserId
                 }))
             );
-        return created;
+        return [createdMessage, false] as const;
     });
     if (!message) throw new ApiError(500, "Could not create message");
-    void ensureMessageLinkPreviews(message.id, htmlToText(content));
-    void pushForNewMessage({ channelId, authorUserId: actor.id, mentionedUserIds: mentioned });
+    if (!isReplay) {
+        void ensureMessageLinkPreviews(message.id, htmlToText(content));
+        void pushForNewMessage({ channelId, authorUserId: actor.id, mentionedUserIds: mentioned });
+    }
     return context.json({ message }, 201);
 });
 
