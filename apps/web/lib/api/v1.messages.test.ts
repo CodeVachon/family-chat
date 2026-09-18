@@ -78,6 +78,78 @@ describe("POST /channels/:channelId/messages", () => {
         expect(pushForNewMessage).toHaveBeenCalledTimes(1);
     });
 
+    it("replays the original result for a repeated clientMessageId in the same channel", async () => {
+        signedInAs();
+        const channelId = uuid();
+        grantPost();
+        const existing = {
+            id: uuid(),
+            channelId,
+            authorUserId: uuid(),
+            body: "<p>hi</p>",
+            clientMessageId: "11111111-1111-4111-8111-111111111111"
+        };
+        db.query.messages.findFirst.mockResolvedValueOnce(existing);
+
+        const res = await request("POST", `/channels/${channelId}/messages`, {
+            body: "<p>hi</p>",
+            clientMessageId: existing.clientMessageId
+        });
+
+        expect(res.status).toBe(201);
+        const resBody = await res.json();
+        expect(resBody.message).toEqual(existing);
+        expect(db.insert).not.toHaveBeenCalled();
+        expect(pushForNewMessage).not.toHaveBeenCalled();
+    });
+
+    it("returns 409 when clientMessageId was already used in a different channel", async () => {
+        signedInAs();
+        const channelId = uuid();
+        grantPost();
+        db.query.messages.findFirst.mockResolvedValueOnce({
+            id: uuid(),
+            channelId: uuid(), // a different channel
+            clientMessageId: "22222222-2222-4222-8222-222222222222"
+        });
+
+        const res = await request("POST", `/channels/${channelId}/messages`, {
+            body: "<p>hi</p>",
+            clientMessageId: "22222222-2222-4222-8222-222222222222"
+        });
+
+        expect(res.status).toBe(409);
+    });
+
+    it("falls back to the concurrently-inserted row when the race is lost", async () => {
+        const actor = signedInAs();
+        const channelId = uuid();
+        grantPost();
+        const winner = {
+            id: uuid(),
+            channelId,
+            authorUserId: actor.id,
+            body: "<p>hi</p>",
+            clientMessageId: "33333333-3333-4333-8333-333333333333"
+        };
+        // Not found by the pre-check (no replay detected yet)...
+        db.query.messages.findFirst.mockResolvedValueOnce(undefined);
+        // ...but the insert's onConflictDoNothing returns no row (another
+        // concurrent request with the same key won), so the handler re-queries.
+        db.insert.mockReturnValueOnce(chain([]));
+        db.query.messages.findFirst.mockResolvedValueOnce(winner);
+
+        const res = await request("POST", `/channels/${channelId}/messages`, {
+            body: "<p>hi</p>",
+            clientMessageId: winner.clientMessageId
+        });
+
+        expect(res.status).toBe(201);
+        const resBody = await res.json();
+        expect(resBody.message).toEqual(winner);
+        expect(pushForNewMessage).not.toHaveBeenCalled();
+    });
+
     // Regression coverage for the bug this suite was added to catch: the v1
     // schema (postMessageObjectSchema.omit({channelId}).refine(...)) must be
     // constructible and must still enforce the same emptiness rule as the
