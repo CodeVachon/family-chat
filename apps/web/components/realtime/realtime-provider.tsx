@@ -37,6 +37,12 @@ const TYPING_TTL_MS = 5000;
 const TYPING_THROTTLE_MS = 3000;
 const REFRESH_DEBOUNCE_MS = 150;
 const RECONNECT_DEBOUNCE_MS = 250;
+// iOS can leave a backgrounded PWA's EventSource looking "open" without it
+// ever erroring or reconnecting on its own, so returning to the foreground
+// doesn't otherwise guarantee a live connection. Force a fresh one after any
+// non-trivial time away; short blips (e.g. the app switcher) aren't worth
+// the churn.
+const VISIBILITY_RECONNECT_THRESHOLD_MS = 15_000;
 // A mentioned 'all'-level member receives both a `message.created` and a
 // `mention` event for the same message (separate NOTIFYs from one transaction,
 // `message.created` delivered first). Briefly hold the generic "new message"
@@ -277,6 +283,24 @@ export function RealtimeProvider({
             pending.clear();
         };
     }, [userId, scheduleRefresh, scheduleReconnect, addTyping, maybeNotify, connectionEpoch]);
+
+    // Force a fresh connection when the app returns to the foreground after
+    // being backgrounded for a while (see VISIBILITY_RECONNECT_THRESHOLD_MS).
+    useEffect(() => {
+        let hiddenAt: number | null = null;
+        const onVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                hiddenAt = Date.now();
+                return;
+            }
+            if (hiddenAt !== null && Date.now() - hiddenAt > VISIBILITY_RECONNECT_THRESHOLD_MS) {
+                scheduleReconnect();
+            }
+            hiddenAt = null;
+        };
+        document.addEventListener("visibilitychange", onVisibilityChange);
+        return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    }, [scheduleReconnect]);
 
     // Expire stale typing entries.
     useEffect(() => {
