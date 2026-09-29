@@ -4,22 +4,10 @@ import postgres from "postgres";
 
 import { listVisibleChannelIdsForUsers } from "@/lib/queries/channels";
 
+import type { REALTIME_EVENT_TYPES } from "./event-types";
+
 export type RealtimeEvent = {
-    type:
-        | "ready"
-        | "resync"
-        | "message.created"
-        | "message.updated"
-        | "message.deleted"
-        | "reaction.changed"
-        | "mention"
-        | "read.updated"
-        | "channels.changed"
-        | "users.changed"
-        | "settings.changed"
-        | "typing"
-        | "presence"
-        | "presence.snapshot";
+    type: (typeof REALTIME_EVENT_TYPES)[number];
     channelId?: string;
     channelName?: string;
     messageId?: string;
