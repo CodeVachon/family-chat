@@ -24,8 +24,12 @@ export type Actor = {
     id: string;
     name: string;
     email: string;
+    emailVerified: boolean;
+    image: string | null;
     appRole: "owner" | "admin" | "user";
     approvalStatus: "approved" | "pending" | "rejected";
+    createdAt: string;
+    updatedAt: string;
 };
 
 /** Authenticate the next request as this user (one-shot, like the real session check). */
@@ -34,8 +38,12 @@ export function signedInAs(overrides: Partial<Actor> = {}): Actor {
         id: uuid(),
         name: "Test User",
         email: `${uuid()}@example.com`,
+        emailVerified: true,
+        image: null,
         appRole: "user",
         approvalStatus: "approved",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         ...overrides
     };
     auth.api.getSession.mockResolvedValueOnce({ user: actor });
