@@ -140,6 +140,7 @@ export default async function ChannelPage({
                 <ThreadPanel
                     channelId={channel.id}
                     channelName={channel.name}
+                    channelColor={channel.color}
                     rootId={threadId}
                     viewer={viewer}
                     members={composerMembers}

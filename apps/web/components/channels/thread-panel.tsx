@@ -10,6 +10,7 @@ import { listThreadMessages } from "@/lib/queries/channels";
 export async function ThreadPanel({
     channelId,
     channelName,
+    channelColor,
     rootId,
     viewer,
     members,
@@ -17,6 +18,7 @@ export async function ThreadPanel({
 }: {
     channelId: string;
     channelName: string;
+    channelColor?: string | null;
     rootId: string;
     viewer: MessageViewer;
     members: ComposerMember[];
@@ -49,6 +51,7 @@ export async function ThreadPanel({
             ) : (
                 <>
                     <MessageScroller
+                        accentColor={channelColor}
                         bottomKey={`${messages[messages.length - 1]?.id}:${messages.length}`}
                     >
                         <div className="py-4">
