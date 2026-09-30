@@ -155,6 +155,13 @@
       "when": 1785940259966,
       "tag": "0021_violet_princess_powerful",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789741507808,
+      "tag": "0022_magical_gwen_stacy",
+      "breakpoints": true
     }
   ]
 }

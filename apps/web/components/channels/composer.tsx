@@ -124,6 +124,7 @@ export function Composer({
             systemEvent: null,
             threadRootId,
             body: html,
+            clientMessageId: null,
             editedAt: null,
             deletedAt: null,
             createdAt: now,

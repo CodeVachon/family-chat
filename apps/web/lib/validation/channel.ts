@@ -67,7 +67,11 @@ export const postMessageObjectSchema = z.object({
     // HTML body (rich text) — larger ceiling than the visible-text limit.
     body: z.string().max(20000),
     attachments: z.array(attachmentInputSchema).max(10).default([]),
-    mentionUserIds: z.array(z.string()).max(20).default([])
+    mentionUserIds: z.array(z.string()).max(20).default([]),
+    // Caller-generated idempotency key for retrying an ambiguously-completed
+    // send (see /api/v1's handler). Unused by the web app's own composer,
+    // which has no cross-request retry to de-dupe.
+    clientMessageId: z.string().uuid().optional()
 });
 
 // Kept separate from postMessageObjectSchema so callers (e.g. the v1 API,
