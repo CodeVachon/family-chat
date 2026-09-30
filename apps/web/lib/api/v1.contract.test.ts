@@ -74,7 +74,14 @@ describe("fixtures satisfy their schemas", () => {
     it("decoratedMessageFixture also satisfies the top-level history item shape", () => {
         // Top-level history adds replyCount/lastReplyAt on top of the thread shape.
         channelMessagesPageSchema.parse({
-            messages: [{ ...decoratedMessageFixture, replyCount: 0, lastReplyAt: null }],
+            messages: [
+                {
+                    ...decoratedMessageFixture,
+                    replyCount: 0,
+                    unreadReplyCount: 0,
+                    lastReplyAt: null
+                }
+            ],
             hasMore: false
         });
     });

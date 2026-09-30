@@ -138,6 +138,7 @@ export const decoratedMessageFixture = {
 export const channelMessageFixture = {
     ...decoratedMessageFixture,
     replyCount: 2,
+    unreadReplyCount: 1,
     lastReplyAt: "2026-01-15T18:02:00.000Z"
 };
 

@@ -2,7 +2,7 @@
 
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -113,6 +113,7 @@ function MessageContent({
     canReact,
     showReply,
     replyCount,
+    unreadReplyCount,
     pending,
     onReact
 }: {
@@ -121,9 +122,15 @@ function MessageContent({
     canReact: boolean;
     showReply: boolean;
     replyCount: number;
+    unreadReplyCount: number;
     pending: boolean;
     onReact: (emoji: string) => void;
 }) {
+    // Opening the thread is what "reads" it: the channel read marker only moves
+    // with top-level messages, so hide the highlight locally while it's open.
+    const openThreadId = useSearchParams().get("thread");
+    const hasUnreadReplies = unreadReplyCount > 0 && openThreadId !== message.id;
+
     return (
         <div data-component="MessageContent">
             {message.body && <MessageBody body={message.body} mentions={message.mentions} />}
@@ -146,10 +153,21 @@ function MessageContent({
             {showReply && replyCount > 0 && (
                 <Link
                     href={`?thread=${message.id}`}
-                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    data-unread={hasUnreadReplies || undefined}
+                    className={cn(
+                        "mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline",
+                        hasUnreadReplies &&
+                            "-ml-1.5 rounded-md bg-primary/10 px-1.5 py-0.5 font-semibold"
+                    )}
                 >
                     <MessageSquare className="size-3.5" />
                     {replyCount} {replyCount === 1 ? "reply" : "replies"}
+                    {hasUnreadReplies && (
+                        <>
+                            <span aria-hidden className="size-1.5 rounded-full bg-primary" />
+                            <span className="sr-only">({unreadReplyCount} unread)</span>
+                        </>
+                    )}
                 </Link>
             )}
         </div>
@@ -199,6 +217,7 @@ export function MessageItem({
     const hue = prefs?.colorHue ?? 220;
     const deleted = Boolean(message.deletedAt);
     const replyCount = "replyCount" in message ? message.replyCount : 0;
+    const unreadReplyCount = "unreadReplyCount" in message ? message.unreadReplyCount : 0;
     // In the channel list (not a thread), a tap on touch devices opens the
     // message's thread — the thread view is where the actions menu lives.
     const inThread = !showReply;
@@ -268,6 +287,7 @@ export function MessageItem({
                         canReact={viewer.canPost}
                         showReply={showReply}
                         replyCount={replyCount}
+                        unreadReplyCount={unreadReplyCount}
                         pending={pending}
                         onReact={react}
                     />

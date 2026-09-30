@@ -242,6 +242,7 @@ export const decoratedMessageSchema = sentMessageSchema.extend({
 // thread replies (GET .../thread) use decoratedMessageSchema without these.
 export const channelMessageSchema = decoratedMessageSchema.extend({
     replyCount: z.number().int().nonnegative(),
+    unreadReplyCount: z.number().int().nonnegative(),
     lastReplyAt: isoTimestamp.nullable()
 });
 
