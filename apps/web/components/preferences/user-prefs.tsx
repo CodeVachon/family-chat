@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 
 import { formatTimestamp } from "@/lib/format";
 import type { ResolvedPreferences } from "@/lib/queries/preferences";
@@ -49,17 +49,38 @@ export function UserPrefsProvider({
     return <PrefsContext.Provider value={{ ...prefs, nowTick }}>{children}</PrefsContext.Provider>;
 }
 
-/** A timestamp rendered in the viewer's preferred date/time format. */
+const subscribeNoop = () => () => {};
+
+/** False during SSR and the hydration pass, true on every client render after. */
+function useIsClient(): boolean {
+    return useSyncExternalStore(
+        subscribeNoop,
+        () => true,
+        () => false
+    );
+}
+
+/**
+ * A timestamp rendered in the viewer's preferred date/time format, in the
+ * viewer's own timezone.
+ *
+ * The instant is only formatted on the client. Formatting during SSR uses the
+ * *server's* timezone (UTC in production), and React does not patch a
+ * hydration text mismatch on a `suppressHydrationWarning` element, so the
+ * server's wall-clock time (e.g. `00:32` instead of `20:32`) would stick until
+ * the next text change. Rendering an empty placeholder for the server/hydration
+ * pass lets React swap in the locally formatted time right after hydrating.
+ */
 export function Timestamp({ date, className }: { date: Date; className?: string }) {
     const { dateTimeFormat, nowTick } = useUserPrefs();
+    const isClient = useIsClient();
     return (
         <span
             data-component="Timestamp"
-            suppressHydrationWarning
             className={className}
-            title={date.toLocaleString()}
+            title={isClient ? date.toLocaleString() : undefined}
         >
-            {formatTimestamp(date, dateTimeFormat, new Date(nowTick))}
+            {isClient ? formatTimestamp(date, dateTimeFormat, new Date(nowTick)) : null}
         </span>
     );
 }
