@@ -66,23 +66,23 @@ Validation failures (Zod) additionally include `"issues"` (the raw
 ```jsonc
 // validationErrorEnvelopeFixture
 {
-  "error": {
-    "message": "Validation failed",
-    "issues": [{ "code": "custom", "message": "Message cannot be empty", "path": ["body"] }]
-  }
+    "error": {
+        "message": "Validation failed",
+        "issues": [{ "code": "custom", "message": "Message cannot be empty", "path": ["body"] }]
+    }
 }
 ```
 
-| Status | Meaning |
-|---|---|
-| 400 | Malformed request the schema layer never saw (bad path param, bad query param) |
-| 401 | No session |
-| 403 | Session exists but isn't approved, or isn't authorized for this action |
-| 404 | Resource not found |
-| 409 | Conflicting state (e.g. modifying the channel owner) |
-| 422 | Zod validation failure, or a semantically invalid but well-typed body |
-| 429 | Rate limited (see below) |
-| 500 | Unhandled error — server logs the real error; the client never sees it |
+| Status | Meaning                                                                        |
+| ------ | ------------------------------------------------------------------------------ |
+| 400    | Malformed request the schema layer never saw (bad path param, bad query param) |
+| 401    | No session                                                                     |
+| 403    | Session exists but isn't approved, or isn't authorized for this action         |
+| 404    | Resource not found                                                             |
+| 409    | Conflicting state (e.g. modifying the channel owner)                           |
+| 422    | Zod validation failure, or a semantically invalid but well-typed body          |
+| 429    | Rate limited (see below)                                                       |
+| 500    | Unhandled error — server logs the real error; the client never sees it         |
 
 A `2xx` with an empty body is always **204**, never `200` with an empty JSON
 object — `DELETE`, `join`/`leave`/`read`/`typing`, and the push-subscription
@@ -93,11 +93,11 @@ endpoints all respond this way.
 In-memory, per-process (not shared across instances — informational for
 client-side backoff, not a hard guarantee):
 
-| Action | Limit | Notes |
-|---|---|---|
-| `POST /channels/:id/messages` | 20 / 60s per user, across all channels | 429 with a human-readable `retryAfterMs`-derived message |
-| `POST /channels/:id/typing` | 1 / 2.5s per (user, channel) | Silently no-ops (204), not an error |
-| Better Auth magic-link request | 5 / 60s | Enforced inside the plugin, not app code |
+| Action                         | Limit                                  | Notes                                                    |
+| ------------------------------ | -------------------------------------- | -------------------------------------------------------- |
+| `POST /channels/:id/messages`  | 20 / 60s per user, across all channels | 429 with a human-readable `retryAfterMs`-derived message |
+| `POST /channels/:id/typing`    | 1 / 2.5s per (user, channel)           | Silently no-ops (204), not an error                      |
+| Better Auth magic-link request | 5 / 60s                                | Enforced inside the plugin, not app code                 |
 
 **No idempotency key exists on `POST /messages` yet** (tracked separately) — a
 retried request after a dropped response creates a duplicate message. Clients
@@ -111,13 +111,13 @@ instead.
 - All timestamps are ISO-8601 strings (`Date#toJSON()`, e.g.
   `"2026-01-15T18:04:12.000Z"`) — never a bare date, never epoch millis. A
   nullable timestamp (e.g. `archivedAt`, `editedAt`) is `null`, not omitted.
-- A field that can be absent for a *reason* (not yet set, not applicable) is
+- A field that can be absent for a _reason_ (not yet set, not applicable) is
   `null` rather than omitted from the object — every documented field is
   always present on a successful response.
 - Message `body` is **sanitized HTML** (the Tiptap rich-text pipeline's
   output), not plain text or Markdown. A terminal client needs an
   HTML→renderable-text conversion (strip tags, resolve `<span
-  data-type="mention" data-id="...">` to a name, etc.) — see
+data-type="mention" data-id="...">` to a name, etc.) — see
   `apps/web/lib/messaging/rich-text.ts`'s `htmlToText` for the same reduction
   the server itself uses for previews/notifications.
 
@@ -156,19 +156,21 @@ password, verification, magic-link, and passkey endpoints under `/api/auth`.
 ```jsonc
 // meResponseFixture
 {
-  "user": {
-    "id": "018f2e2a-0000-7000-8000-000000000001",
-    "name": "Jamie Vachon",
-    "email": "jamie@example.com",
-    "emailVerified": true,
-    "image": null,
-    "appRole": "user",           // "owner" | "admin" | "user"
-    "approvalStatus": "approved", // "approved" | "pending" | "rejected"
-    "createdAt": "2026-01-15T18:04:12.000Z",
-    "updatedAt": "2026-01-15T18:04:12.000Z"
-  },
-  "preferences": { /* see Preferences below */ },
-  "unread": 3
+    "user": {
+        "id": "018f2e2a-0000-7000-8000-000000000001",
+        "name": "Jamie Vachon",
+        "email": "jamie@example.com",
+        "emailVerified": true,
+        "image": null,
+        "appRole": "user", // "owner" | "admin" | "user"
+        "approvalStatus": "approved", // "approved" | "pending" | "rejected"
+        "createdAt": "2026-01-15T18:04:12.000Z",
+        "updatedAt": "2026-01-15T18:04:12.000Z"
+    },
+    "preferences": {
+        /* see Preferences below */
+    },
+    "unread": 3
 }
 ```
 
@@ -181,14 +183,21 @@ first user in an instance is auto-approved as `owner`.
 ```jsonc
 // channelFixture
 {
-  "id": "uuid", "name": "General", "description": "string|null",
-  "color": "#3b82f6|null", "icon": "hash|null",
-  "isPrivate": false, "isArchived": false, "archivedAt": null,
-  "createdByUserId": "uuid", "createdAt": "ts", "updatedAt": "ts"
+    "id": "uuid",
+    "name": "General",
+    "description": "string|null",
+    "color": "#3b82f6|null",
+    "icon": "hash|null",
+    "isPrivate": false,
+    "isArchived": false,
+    "archivedAt": null,
+    "createdByUserId": "uuid",
+    "createdAt": "ts",
+    "updatedAt": "ts"
 }
 ```
 
-`GET /channels` and `GET /activity` return this shape *extended* with
+`GET /channels` and `GET /activity` return this shape _extended_ with
 `myRole` (`owner|admin|user|viewer|null`), `isFavorite`, `unreadCount`, and
 `mentionCount` — that extended shape only exists on those two list endpoints.
 
@@ -201,14 +210,22 @@ matrix:
 ```jsonc
 // channelDetailResponseFixture
 {
-  "channel": { /* channel shape above */ },
-  "membership": {
-    "id": "uuid", "channelId": "uuid", "userId": "uuid",
-    "role": "user", "isFavorite": true,
-    "lastReadMessageId": "uuid|null", "lastReadAt": "ts|null",
-    "joinedAt": "ts", "createdAt": "ts", "updatedAt": "ts"
-  },
-  "capabilities": { "canPost": true, "canManage": false, "canManageMembers": false }
+    "channel": {
+        /* channel shape above */
+    },
+    "membership": {
+        "id": "uuid",
+        "channelId": "uuid",
+        "userId": "uuid",
+        "role": "user",
+        "isFavorite": true,
+        "lastReadMessageId": "uuid|null",
+        "lastReadAt": "ts|null",
+        "joinedAt": "ts",
+        "createdAt": "ts",
+        "updatedAt": "ts"
+    },
+    "capabilities": { "canPost": true, "canManage": false, "canManageMembers": false }
 }
 ```
 
@@ -228,13 +245,19 @@ just the raw inserted row:
 ```jsonc
 // sendMessageResponseFixture — POST /channels/:id/messages
 {
-  "message": {
-    "id": "uuid", "channelId": "uuid", "authorUserId": "uuid",
-    "type": "user", "systemEvent": null, "threadRootId": null,
-    "body": "<p>Dinner's at 6</p>",
-    "editedAt": null, "deletedAt": null,
-    "createdAt": "ts", "updatedAt": "ts"
-  }
+    "message": {
+        "id": "uuid",
+        "channelId": "uuid",
+        "authorUserId": "uuid",
+        "type": "user",
+        "systemEvent": null,
+        "threadRootId": null,
+        "body": "<p>Dinner's at 6</p>",
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": "ts",
+        "updatedAt": "ts"
+    }
 }
 ```
 
@@ -248,24 +271,41 @@ everything needed to render without a follow-up request:
 ```jsonc
 // channelMessageFixture — a page item from GET /channels/:id/messages
 {
-  "id": "uuid", "channelId": "uuid", "authorUserId": "uuid",
-  "type": "user", "systemEvent": null, "threadRootId": null,
-  "body": "<p>Dinner's at 6</p>",
-  "editedAt": null, "deletedAt": null,
-  "createdAt": "ts", "updatedAt": "ts",
-  "author": { "id": "uuid", "name": "Jamie Vachon", "preferences": { "displayName": "Jamie", "colorHue": 220, "avatarUrl": null } },
-  "attachments": [ /* see below */ ],
-  "reactions": [{ "emoji": "👍", "count": 2, "reactedByMe": true }],
-  "mentions": [{ "userId": "uuid", "name": "Sam", "colorHue": 140 }],
-  "mentionsMe": false,
-  "linkPreviews": [],
-  "replyCount": 2,
-  "lastReplyAt": "ts|null"
+    "id": "uuid",
+    "channelId": "uuid",
+    "authorUserId": "uuid",
+    "type": "user",
+    "systemEvent": null,
+    "threadRootId": null,
+    "body": "<p>Dinner's at 6</p>",
+    "editedAt": null,
+    "deletedAt": null,
+    "createdAt": "ts",
+    "updatedAt": "ts",
+    "author": {
+        "id": "uuid",
+        "name": "Jamie Vachon",
+        "preferences": { "displayName": "Jamie", "colorHue": 220, "avatarUrl": null }
+    },
+    "attachments": [
+        /* see below */
+    ],
+    "reactions": [{ "emoji": "👍", "count": 2, "reactedByMe": true }],
+    "mentions": [{ "userId": "uuid", "name": "Sam", "colorHue": 140 }],
+    "mentionsMe": false,
+    "linkPreviews": [],
+    "replyCount": 2,
+    "unreadReplyCount": 1,
+    "lastReplyAt": "ts|null"
 }
 ```
 
+`unreadReplyCount` is how many of the replies are unread for the caller: replies
+by other users created after the caller's channel read marker (threads have no
+read state of their own). It is `0` for non-members.
+
 `GET /channels/:id/messages/:messageId/thread` returns the same decorated
-shape **without** `replyCount`/`lastReplyAt` (a reply doesn't have its own
+shape **without** `replyCount`/`unreadReplyCount`/`lastReplyAt` (a reply doesn't have its own
 thread aggregate) and with no pagination — the whole thread comes back in one
 response.
 
@@ -278,11 +318,21 @@ Attachment shape (Cloudinary-backed):
 ```jsonc
 // attachmentFixture
 {
-  "id": "uuid", "messageId": "uuid", "uploaderId": "uuid",
-  "kind": "image", "provider": "cloudinary", "publicId": "family-chat/.../abc123",
-  "resourceType": "image", "secureUrl": "https://res.cloudinary.com/...",
-  "format": "jpg", "bytes": 245760, "width": 1600, "height": 1200,
-  "originalFilename": "beach-day.jpg", "thumbnailUrl": null, "createdAt": "ts"
+    "id": "uuid",
+    "messageId": "uuid",
+    "uploaderId": "uuid",
+    "kind": "image",
+    "provider": "cloudinary",
+    "publicId": "family-chat/.../abc123",
+    "resourceType": "image",
+    "secureUrl": "https://res.cloudinary.com/...",
+    "format": "jpg",
+    "bytes": 245760,
+    "width": 1600,
+    "height": 1200,
+    "originalFilename": "beach-day.jpg",
+    "thumbnailUrl": null,
+    "createdAt": "ts"
 }
 ```
 
@@ -307,7 +357,7 @@ server keys replay detection on `(authorUserId, clientMessageId)`:
   The response is **not** re-validated against the new request's body; only
   identity is checked, so a replay of the exact same retried request always
   gets the exact same answer.
-- **Conflict** (same author, same `clientMessageId`, but a *different*
+- **Conflict** (same author, same `clientMessageId`, but a _different_
   `channelId`): **409** — reusing a client id across channels is a client
   bug, not a legitimate replay, and silently accepting it would post to the
   wrong channel or silently drop the new one.
@@ -327,15 +377,21 @@ creates a genuine duplicate message.
 
 ```jsonc
 {
-  "displayName": "Jamie", "dateTimeFormat": "relative", // "relative"|"12h"|"24h"
-  "themePreference": "system",                          // "system"|"light"|"dark"
-  "notificationLevel": "mentions",                       // "all"|"mentions"|"none"
-  "colorHue": 220,
-  "fontSizeScale": "default",                            // "small"|"default"|"large"|"xlarge"
-  "fontFamily": "figtree",
-  "avatarUrl": null, "avatarSourceUrl": null, "avatarCrop": null,
-  "bio": null, "phone": null,
-  "bannerUrl": null, "bannerSourceUrl": null, "bannerCrop": null
+    "displayName": "Jamie",
+    "dateTimeFormat": "relative", // "relative"|"12h"|"24h"
+    "themePreference": "system", // "system"|"light"|"dark"
+    "notificationLevel": "mentions", // "all"|"mentions"|"none"
+    "colorHue": 220,
+    "fontSizeScale": "default", // "small"|"default"|"large"|"xlarge"
+    "fontFamily": "figtree",
+    "avatarUrl": null,
+    "avatarSourceUrl": null,
+    "avatarCrop": null,
+    "bio": null,
+    "phone": null,
+    "bannerUrl": null,
+    "bannerSourceUrl": null,
+    "bannerCrop": null
 }
 ```
 
@@ -379,23 +435,22 @@ Event catalog (the type union in
 which the contract schema imports directly — this list cannot drift from what
 the broker actually sends):
 
-| `type` | Fields carried | Meaning |
-|---|---|---|
-| `ready` | `ts` | Stream is subscribed and live |
-| `resync` | `ts` | Broker reconnected to Postgres — re-pull anything you're tracking (unread counts, visible channels), don't tear down the stream |
-| `message.created` / `.updated` / `.deleted` | `channelId`, `messageId`, `ts` | Re-fetch or patch the message locally |
-| `reaction.changed` | `channelId`, `messageId`, `ts` | Re-fetch the message's reaction summary |
-| `mention` | `channelId`, `messageId`, `targetUserId`, `ts` | You were mentioned |
-| `read.updated` | `channelId`, `userId`, `ts` | A member's read pointer moved (unread badge updates) |
-| `channels.changed` | `ts` | Visible-channel set changed — refetch `GET /channels` |
-| `users.changed` | `ts` | User directory changed (new signup, approval, role change) |
-| `settings.changed` | `ts` | App settings changed — refetch `GET /settings` |
-| `typing` | `channelId`, `userId`, `name`, `ts` | Someone is typing |
-| `presence` | `userId`, `online`, `ts` | A user's online status changed |
-| `presence.snapshot` | `onlineUserIds`, `ts` | Sent once on subscribe: everyone currently online |
+| `type`                                      | Fields carried                                 | Meaning                                                                                                                         |
+| ------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `ready`                                     | `ts`                                           | Stream is subscribed and live                                                                                                   |
+| `resync`                                    | `ts`                                           | Broker reconnected to Postgres — re-pull anything you're tracking (unread counts, visible channels), don't tear down the stream |
+| `message.created` / `.updated` / `.deleted` | `channelId`, `messageId`, `ts`                 | Re-fetch or patch the message locally                                                                                           |
+| `reaction.changed`                          | `channelId`, `messageId`, `ts`                 | Re-fetch the message's reaction summary                                                                                         |
+| `mention`                                   | `channelId`, `messageId`, `targetUserId`, `ts` | You were mentioned                                                                                                              |
+| `read.updated`                              | `channelId`, `userId`, `ts`                    | A member's read pointer moved (unread badge updates)                                                                            |
+| `channels.changed`                          | `ts`                                           | Visible-channel set changed — refetch `GET /channels`                                                                           |
+| `users.changed`                             | `ts`                                           | User directory changed (new signup, approval, role change)                                                                      |
+| `settings.changed`                          | `ts`                                           | App settings changed — refetch `GET /settings`                                                                                  |
+| `typing`                                    | `channelId`, `userId`, `name`, `ts`            | Someone is typing                                                                                                               |
+| `presence`                                  | `userId`, `online`, `ts`                       | A user's online status changed                                                                                                  |
+| `presence.snapshot`                         | `onlineUserIds`, `ts`                          | Sent once on subscribe: everyone currently online                                                                               |
 
 ```jsonc
 // realtimeEventFixtures.messageCreated
 { "type": "message.created", "channelId": "uuid", "messageId": "uuid", "ts": 1700000000001 }
 ```
-

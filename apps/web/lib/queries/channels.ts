@@ -1,6 +1,20 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import {
+    and,
+    asc,
+    desc,
+    eq,
+    gt,
+    inArray,
+    isNotNull,
+    isNull,
+    lt,
+    ne,
+    or,
+    sql,
+    type SQL
+} from "drizzle-orm";
 
 import { db } from "@workspace/db/client";
 import {
@@ -418,13 +432,29 @@ export async function listChannelMessages(
 
     const decorated = await decorateMessages(rows, userId);
 
-    // Reply counts + last reply time per root message.
+    // Reply counts + last reply time per root message, plus how many replies are
+    // unread for this user. Threads have no read state of their own, so a reply
+    // is unread when it's someone else's and newer than the channel read marker.
+    // A non-member has no marker (and no unread tracking), so nothing is unread.
     const ids = rows.map((r) => r.id);
+    const membership = ids.length
+        ? await db.query.channelMembers.findFirst({
+              columns: { lastReadAt: true },
+              where: and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId))
+          })
+        : undefined;
+    const unreadReply = membership
+        ? and(
+              ne(messages.authorUserId, userId),
+              membership.lastReadAt ? gt(messages.createdAt, membership.lastReadAt) : undefined
+          )
+        : sql`false`;
     const replyAgg = ids.length
         ? await db
               .select({
                   rootId: messages.threadRootId,
                   count: sql<number>`count(*)::int`,
+                  unread: sql<number>`(count(*) filter (where ${unreadReply}))::int`,
                   last: sql<string>`max(${messages.createdAt})`
               })
               .from(messages)
@@ -438,6 +468,7 @@ export async function listChannelMessages(
         return {
             ...d,
             replyCount: agg?.count ?? 0,
+            unreadReplyCount: agg?.unread ?? 0,
             lastReplyAt: agg?.last ? new Date(agg.last) : null
         };
     });

@@ -164,6 +164,7 @@ export function Composer({
             mentionsMe: false,
             linkPreviews: [],
             replyCount: 0,
+            unreadReplyCount: 0,
             lastReplyAt: null,
             pending: true,
             nonce
